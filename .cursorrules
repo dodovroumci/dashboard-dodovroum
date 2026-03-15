@@ -1,0 +1,4 @@
+Always refer to the instructions in context.md.
+Strictly follow the Dribbble/Bento design guidelines.
+Ensure all Flutter code uses Riverpod and all Web code uses Next.js 15.
+Never forget the multi-owner isolation logic (ownerId).
