@@ -16,10 +16,12 @@ import Sidebar from '../Sidebar.vue';
 import Header from '../Header.vue';
 import { usePage } from '@inertiajs/vue3';
 import { Home, Building2, Truck, Calendar, Package, Wallet } from 'lucide-vue-next';
+import { useAutoRefresh } from '../../composables/useAutoRefresh';
 
 const sidebarOpen = ref(false);
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
+useAutoRefresh();
 
 const navItems = computed(() => [
   { label: 'Tableau de bord', href: '/owner/dashboard', icon: Home },

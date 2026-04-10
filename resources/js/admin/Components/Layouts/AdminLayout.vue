@@ -15,6 +15,7 @@ import { ref, computed } from 'vue';
 import Sidebar from '../Sidebar.vue';
 import Header from '../Header.vue';
 import { usePage } from '@inertiajs/vue3';
+import { useAutoRefresh } from '../../composables/useAutoRefresh';
 import {
   Home,
   Building2,
@@ -29,6 +30,7 @@ import {
 const sidebarOpen = ref(false);
 const page = usePage();
 const user = computed(() => page.props.auth?.user);
+useAutoRefresh();
 
 const navItems = computed(() => [
   { label: 'Tableau de bord', href: '/admin/dashboard', icon: Home },
