@@ -2,66 +2,83 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * Model User - Adapté au schéma Prisma de DodoVroum
+ */
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    // Prisma utilise des UUID (strings) pour l'id
+    protected $keyType = 'string';
+    public $incrementing = false;
+
+    // On désactive la gestion automatique pour mapper sur createdAt/updatedAt
+    public $timestamps = false;
+
     protected $fillable = [
-        'name',
+        'id',
+        'firstName',
+        'lastName',
         'email',
         'password',
-        'is_admin',
+        'phone',
         'role',
+        'isActive',
+        'isVerified',
+        'is_admin',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Casts des types Prisma vers Laravel
      */
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+           
             'is_admin' => 'boolean',
+            'isActive' => 'boolean',
+            'isVerified' => 'boolean',
         ];
     }
 
     /**
-     * Check if the user is an admin
+     * Helper pour récupérer le nom complet (Laravel attend souvent 'name')
      */
-    public function isAdmin(): bool
+    public function getNameAttribute(): string
     {
-        return $this->role === 'admin';
+        return "{$this->firstName} {$this->lastName}";
     }
 
     /**
-     * Check if the user is an owner
+     * Vérification Admin - Basée sur ton Enum SQL ('ADMIN')
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'ADMIN' || $this->is_admin;
+    }
+
+    /**
+     * Vérification Propriétaire
      */
     public function isOwner(): bool
     {
-        return $this->role === 'owner';
+        return $this->role === 'PROPRIETAIRE';
     }
+    /**
+ * Retourne le mot de passe pour l'authentification.
+ */
+public function getAuthPassword()
+{
+    return $this->password;
+}
 }

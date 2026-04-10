@@ -61,7 +61,14 @@ return [
 
     'providers' => [
         'users' => [
-            'driver' => 'api', // Utiliser le provider personnalisé basé sur l'API
+            'driver' => 'plain-text', // On utilise le driver qu'on a créé dans AppServiceProvider
+            'model' => App\Models\User::class,
+        ],
+        
+        // On garde 'api' au cas où d'autres parties du code le cherchent
+        'api' => [
+            'driver' => 'plain-text',
+            'model' => App\Models\User::class,
         ],
     ],
 
