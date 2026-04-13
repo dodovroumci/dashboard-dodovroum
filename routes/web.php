@@ -49,6 +49,7 @@ Route::post('/logout', [\App\Http\Controllers\Auth\LoginController::class, 'dest
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class, 'show'])->name('profile.show');
     Route::put('/profile', [\App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [\App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('profile.password');
 });
 
 Route::middleware(['auth', 'admin'])

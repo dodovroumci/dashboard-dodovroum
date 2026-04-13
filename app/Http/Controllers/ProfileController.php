@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\DodoVroumApi\ApiAuthService;
 use App\Services\DodoVroumApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +15,8 @@ use Illuminate\Http\RedirectResponse;
 class ProfileController extends Controller
 {
     public function __construct(
-        protected DodoVroumApiService $apiService
+        protected DodoVroumApiService $apiService,
+        protected ApiAuthService $apiAuthService
     ) {}
 
     /**
@@ -113,19 +116,81 @@ class ProfileController extends Controller
                 'country' => $request->country,
             ];
 
-            $updatedUser = $this->apiService->updateUser($user->getAuthIdentifier(), array_filter($apiData));
+            // Ne pas envoyer les clés vides (évite d'écraser côté API avec des chaînes vides si non voulu)
+            $payload = array_filter(
+                $apiData,
+                static fn ($v) => $v !== null && $v !== ''
+            );
 
-            if ($updatedUser) {
-                // Mise à jour de la session locale pour refléter les changements sans recharger
-                session(['api_user' => array_merge(session('api_user', []), $updatedUser)]);
-                return redirect()->back()->with('success', 'Profil mis à jour !');
+            if ($payload === []) {
+                return back()->with('error', 'Aucune modification à enregistrer.');
             }
 
-            return back()->with('error', 'L\'API n\'a pas pu mettre à jour vos données.');
+            // PATCH peut renvoyer un corps vide ou { data: null } : ne pas se fier au tableau retourné
+            $this->apiService->updateUser($user->getAuthIdentifier(), $payload);
+
+            $fresh = $this->apiService->getUser($user->getAuthIdentifier());
+            if ($fresh) {
+                session(['api_user' => $fresh]);
+            } else {
+                session([
+                    'api_user' => array_merge(session('api_user', []), $payload),
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Profil mis à jour !');
 
         } catch (\Exception $e) {
-            Log::error('Update Profile Error: ' . $e->getMessage());
-            return back()->with('error', 'Une erreur est survenue.');
+            Log::error('Update Profile Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', 'Une erreur est survenue lors de la mise à jour du profil.');
+        }
+    }
+
+    /**
+     * Changer le mot de passe (vérification du mot de passe actuel via l'API, mise à jour via compte admin API).
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $userId = $user->getAuthIdentifier();
+        if ($userId === null || $userId === '') {
+            return back()->with('error', 'Session invalide. Veuillez vous reconnecter.');
+        }
+
+        $email = $user->email ?? data_get(session('api_user'), 'email');
+        if (!is_string($email) || trim($email) === '') {
+            return back()->with('error', 'Impossible de vérifier votre compte. Reconnectez-vous.');
+        }
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!$this->apiAuthService->authenticate(strtolower(trim($email)), $validated['current_password'])) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Le mot de passe actuel est incorrect.'],
+            ]);
+        }
+
+        try {
+            $this->apiService->updateUser((string) $userId, [
+                'password' => $validated['password'],
+            ]);
+
+            return redirect()->back()->with('success', 'Mot de passe mis à jour avec succès.');
+        } catch (\Exception $e) {
+            Log::error('Profile updatePassword Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return back()->with('error', 'Impossible de mettre à jour le mot de passe. Réessayez plus tard.');
         }
     }
 }
