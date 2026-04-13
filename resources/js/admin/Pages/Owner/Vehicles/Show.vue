@@ -212,7 +212,7 @@
             <div>
               <p class="text-sm text-slate-500 mb-1">Carburant</p>
               <p class="font-medium text-slate-900">
-                {{ formatFuel(vehicle?.fuel || vehicle?.carburant) }}
+                {{ formatFuel(vehicle?.fuel || vehicle?.carburant || vehicle?.fuelType) }}
               </p>
             </div>
             <div>
@@ -373,7 +373,7 @@
             </div>
             <div>
               <p class="text-sm text-slate-500 mb-1">Carburant</p>
-              <p class="text-sm font-medium text-slate-900">{{ formatFuel(vehicle?.fuel || vehicle?.carburant) }}</p>
+              <p class="text-sm font-medium text-slate-900">{{ formatFuel(vehicle?.fuel || vehicle?.carburant || vehicle?.fuelType) }}</p>
             </div>
             <div v-if="vehicle?.mileage || vehicle?.kilometrage">
               <p class="text-sm text-slate-500 mb-1">Kilométrage</p>
@@ -511,6 +511,7 @@ const props = defineProps<{
     transmission?: string;
     fuel?: string;
     carburant?: string;
+    fuelType?: string;
     mileage?: number;
     kilometrage?: number;
     description?: string;
@@ -629,6 +630,7 @@ const formatFuel = (fuel: string): string => {
   if (!fuel) return 'N/A';
   const fuelMap: Record<string, string> = {
     petrol: 'Essence',
+    gasoline: 'Essence',
     diesel: 'Diesel',
     electric: 'Électrique',
     hybrid: 'Hybride',

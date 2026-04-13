@@ -39,8 +39,17 @@ class VehicleMapper
             'color' => $vehicle['couleur'] ?? $vehicle['color'] ?? null,
             'couleur' => $vehicle['couleur'] ?? $vehicle['color'] ?? null,
             'transmission' => $vehicle['transmission'] ?? null,
-            'fuel' => $vehicle['carburant'] ?? $vehicle['fuel'] ?? null,
-            'carburant' => $vehicle['carburant'] ?? $vehicle['fuel'] ?? null,
+            // L'API NestJS expose surtout fuelType ; carburant/fuel sont des alias historiques
+            'fuel' => $vehicle['carburant']
+                ?? $vehicle['fuel']
+                ?? $vehicle['fuelType']
+                ?? $vehicle['fuel_type']
+                ?? null,
+            'carburant' => $vehicle['carburant']
+                ?? $vehicle['fuel']
+                ?? $vehicle['fuelType']
+                ?? $vehicle['fuel_type']
+                ?? null,
             'mileage' => $vehicle['kilometrage'] ?? $vehicle['mileage'] ?? null,
             'kilometrage' => $vehicle['kilometrage'] ?? $vehicle['mileage'] ?? null,
             'description' => $vehicle['description'] ?? null,
