@@ -1,10 +1,16 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
       <div>
         <h1 class="text-2xl font-bold text-slate-900">Mon profil</h1>
         <p class="text-sm text-slate-500 mt-1">Gérez vos informations personnelles</p>
       </div>
+      <a
+        href="#mot-de-passe"
+        class="text-sm font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap shrink-0"
+      >
+        Mot de passe →
+      </a>
     </div>
 
     <!-- Messages de succès/erreur -->
@@ -166,12 +172,32 @@
             </div>
           </form>
         </div>
+      </div>
 
-        <div class="bg-white border border-slate-200 rounded-xl p-6 mt-6">
-          <h2 class="text-lg font-semibold text-slate-900 mb-2">Sécurité</h2>
-          <p class="text-sm text-slate-500 mb-6">Changez votre mot de passe de connexion au tableau de bord.</p>
+      <!-- Colonne droite : résumé + mot de passe (visible sans défiler tout le formulaire) -->
+      <div class="space-y-6 lg:col-span-1">
+        <!-- Rôle -->
+        <div class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="text-sm font-medium text-slate-500 mb-2">Rôle</h3>
+          <p class="text-lg font-semibold text-slate-900 capitalize">
+            {{ roleLabel }}
+          </p>
+        </div>
 
-          <form @submit.prevent="submitPasswordForm" class="space-y-6">
+        <!-- Date de création -->
+        <div v-if="user?.createdAt" class="bg-white border border-slate-200 rounded-xl p-6">
+          <h3 class="text-sm font-medium text-slate-500 mb-2">Membre depuis</h3>
+          <p class="text-lg font-semibold text-slate-900">
+            {{ formatDate(user.createdAt) }}
+          </p>
+        </div>
+
+        <!-- Mot de passe : même ordre mobile (après infos perso grâce au grid) -->
+        <div id="mot-de-passe" class="bg-white border border-slate-200 rounded-xl p-6 scroll-mt-24">
+          <h2 class="text-lg font-semibold text-slate-900 mb-2">Mot de passe</h2>
+          <p class="text-sm text-slate-500 mb-6">Connexion au tableau de bord (identique à l’app si le compte est partagé).</p>
+
+          <form @submit.prevent="submitPasswordForm" class="space-y-4">
             <div>
               <label for="current_password" class="block text-sm font-medium text-slate-700 mb-2">
                 Mot de passe actuel
@@ -221,43 +247,24 @@
               </div>
             </div>
 
-            <div class="flex gap-3 pt-2">
+            <div class="flex flex-col sm:flex-row gap-2 pt-2">
               <button
                 type="submit"
                 :disabled="passwordForm.processing"
-                class="px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span v-if="passwordForm.processing">Mise à jour...</span>
-                <span v-else>Mettre à jour le mot de passe</span>
+                <span v-else>Enregistrer le nouveau mot de passe</span>
               </button>
               <button
                 type="button"
-                class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                class="px-4 py-2 border border-slate-300 text-sm rounded-lg hover:bg-slate-50 transition-colors"
                 @click="resetPasswordForm"
               >
                 Effacer
               </button>
             </div>
           </form>
-        </div>
-      </div>
-
-      <!-- Informations complémentaires -->
-      <div class="space-y-6">
-        <!-- Rôle -->
-        <div class="bg-white border border-slate-200 rounded-xl p-6">
-          <h3 class="text-sm font-medium text-slate-500 mb-2">Rôle</h3>
-          <p class="text-lg font-semibold text-slate-900 capitalize">
-            {{ roleLabel }}
-          </p>
-        </div>
-
-        <!-- Date de création -->
-        <div v-if="user?.createdAt" class="bg-white border border-slate-200 rounded-xl p-6">
-          <h3 class="text-sm font-medium text-slate-500 mb-2">Membre depuis</h3>
-          <p class="text-lg font-semibold text-slate-900">
-            {{ formatDate(user.createdAt) }}
-          </p>
         </div>
       </div>
     </div>
