@@ -8,6 +8,7 @@ use App\Http\Controllers\Owner\Concerns\HasProprietaireId;
 use App\Services\BookingOwnerScopeService;
 use App\Services\DodoVroumApi\StatsService;
 use App\Services\DodoVroumApiService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -140,20 +141,16 @@ class OwnerRevenueController extends Controller
     }
 
     /**
-     * Calculer les statistiques de revenus avec évolution temporelle
+     * Revenus propriétaire (90 %) : même logique « safe » que l’admin (éligibilité, max(0), Carbon).
      */
     private function calculateRevenueStats(array $residences, array $vehicles, array $bookings): array
     {
-        $now = new \DateTime();
-        $lastMonth = (clone $now)->modify('-1 month');
-        
-        $validBookings = array_filter($bookings, fn (array $b) => $this->isEligibleForRevenue($b));
-        
-        $totalRevenue = 0;
-        $totalBookings = count($validBookings); // Compter uniquement les réservations non annulées
+        $now = Carbon::now();
+        $lastMonth = $now->copy()->subMonth();
+        $currentMonth = $now->month;
+        $currentYear = $now->year;
+
         $activeProperties = 0;
-        
-        // Compter les biens actifs
         foreach ($residences as $residence) {
             $isActive = $residence['isActive'] ?? $residence['is_active'] ?? $residence['available'] ?? true;
             if ($isActive === true || $isActive === 'true' || $isActive === 1) {
@@ -166,110 +163,103 @@ class OwnerRevenueController extends Controller
                 $activeProperties++;
             }
         }
-        
-        // Calculer les revenus et le taux d'occupation
-        $revenueThisMonth = 0;
-        $revenueLastMonth = 0;
+
+        $chartBuckets = [];
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = $now->copy()->subMonths($i);
+            $months[] = $monthDate->format('M');
+            $chartBuckets[$monthDate->format('Y-m')] = 0.0;
+        }
+
+        $totalRevenue = 0.0;
+        $revenueThisMonth = 0.0;
+        $revenueLastMonth = 0.0;
         $bookingsThisMonth = 0;
         $bookingsLastMonth = 0;
         $totalNights = 0;
-        $totalAvailableNights = 0;
-        
-        // Données pour le graphique (6 derniers mois)
-        $chartData = [];
-        $months = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $monthDate = (clone $now)->modify("-$i months");
-            $months[] = $monthDate->format('M');
-            $chartData[$monthDate->format('Y-m')] = 0;
-        }
-        
-        foreach ($validBookings as $booking) {
-            $totalPrice = (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0);
-            // Montant à verser au propriétaire = 90% du prix total
-            $ownerPayment = round($totalPrice * 0.9);
+        $eligibleCount = 0;
+
+        foreach ($bookings as $booking) {
+            if (! is_array($booking) || ! $this->isEligibleForRevenue($booking)) {
+                continue;
+            }
+
+            $eligibleCount++;
+
+            $totalPrice = max(0.0, (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0));
+            $ownerPayment = $totalPrice * 0.9;
             $totalRevenue += $ownerPayment;
-            
-            // Calculer les revenus par mois
-            $bookingDate = $booking['createdAt'] ?? $booking['created_at'] ?? null;
-            if ($bookingDate) {
+
+            $createdRaw = $booking['createdAt'] ?? $booking['created_at'] ?? null;
+            if ($createdRaw) {
                 try {
-                    $bookingDateTime = new \DateTime($bookingDate);
-                    $monthKey = $bookingDateTime->format('Y-m');
-                    
-                    if (isset($chartData[$monthKey])) {
-                        $chartData[$monthKey] += $ownerPayment;
+                    $createdAt = Carbon::parse($createdRaw);
+                    $monthKey = $createdAt->format('Y-m');
+                    if (array_key_exists($monthKey, $chartBuckets)) {
+                        $chartBuckets[$monthKey] += $ownerPayment;
                     }
-                    
-                    // Revenus du mois actuel vs mois dernier
-                    if ($bookingDateTime->format('Y-m') === $now->format('Y-m')) {
+                    if ($createdAt->month === $currentMonth && $createdAt->year === $currentYear) {
                         $revenueThisMonth += $ownerPayment;
                         $bookingsThisMonth++;
-                    } elseif ($bookingDateTime->format('Y-m') === $lastMonth->format('Y-m')) {
+                    } elseif ($createdAt->format('Y-m') === $lastMonth->format('Y-m')) {
                         $revenueLastMonth += $ownerPayment;
                         $bookingsLastMonth++;
                     }
-                } catch (\Exception $e) {
-                    // Ignorer les erreurs de date
+                } catch (\Throwable) {
                 }
             }
-            
-            // Calculer les nuits pour le taux d'occupation
+
             $startDate = $booking['startDate'] ?? $booking['start_date'] ?? null;
             $endDate = $booking['endDate'] ?? $booking['end_date'] ?? null;
             if ($startDate && $endDate) {
                 try {
-                    $start = new \DateTime($startDate);
-                    $end = new \DateTime($endDate);
-                    $nights = $start->diff($end)->days;
-                    $totalNights += $nights;
-                } catch (\Exception $e) {
-                    // Ignorer les erreurs de date
+                    $start = Carbon::parse($startDate);
+                    $end = Carbon::parse($endDate);
+                    $totalNights += max(0, $start->diffInDays($end));
+                } catch (\Throwable) {
                 }
             }
         }
-        
-        // Calculer le taux d'occupation (simplifié)
-        // On suppose qu'un bien peut être réservé 30 jours par mois en moyenne
-        $occupationRate = 0;
+
+        $occupationRate = 0.0;
         if ($activeProperties > 0) {
-            $maxNights = $activeProperties * 30; // 30 jours par bien par mois
+            $maxNights = $activeProperties * 30;
             if ($maxNights > 0) {
-                $occupationRate = round(($totalNights / $maxNights) * 100);
+                $occupationRate = min(100.0, round(($totalNights / $maxNights) * 100, 1));
             }
         }
-        
-        // Calculer les tendances (pourcentage de variation)
-        $revenueTrend = 0;
+
+        $revenueTrend = 0.0;
         if ($revenueLastMonth > 0) {
             $revenueTrend = round((($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100, 1);
         }
-        
-        $bookingsTrend = 0;
+
+        $bookingsTrend = 0.0;
         if ($bookingsLastMonth > 0) {
             $bookingsTrend = round((($bookingsThisMonth - $bookingsLastMonth) / $bookingsLastMonth) * 100, 1);
         }
-        
-        // Préparer les données du graphique
+
         $chartDataArray = [];
         foreach ($months as $index => $month) {
-            $monthKey = (clone $now)->modify('-' . (5 - $index) . ' months')->format('Y-m');
+            $monthKey = $now->copy()->subMonths(5 - $index)->format('Y-m');
             $chartDataArray[] = [
                 'month' => $month,
-                'total' => (int) ($chartData[$monthKey] ?? 0),
+                'total' => (int) round(max(0.0, $chartBuckets[$monthKey] ?? 0.0)),
             ];
         }
-        
+
         return [
-            'totalRevenue' => (int) $totalRevenue,
-            'totalBookings' => $totalBookings,
+            'totalRevenue' => round(max(0.0, $totalRevenue), 2),
+            'revenueThisMonth' => round(max(0.0, $revenueThisMonth), 2),
+            'totalBookings' => $eligibleCount,
             'occupationRate' => $occupationRate,
             'activeProperties' => $activeProperties,
             'trends' => [
                 'totalRevenue' => $revenueTrend,
                 'bookings' => $bookingsTrend,
-                'occupation' => 0, // À calculer si nécessaire
-                'properties' => 0, // À calculer si nécessaire
+                'occupation' => 0,
+                'properties' => 0,
             ],
             'chartData' => $chartDataArray,
         ];
@@ -337,6 +327,7 @@ class OwnerRevenueController extends Controller
         
         return [
             'totalRevenue' => (int) ($apiStats['totalRevenue'] ?? 0),
+            'revenueThisMonth' => (float) ($apiStats['revenueThisMonth'] ?? 0),
             'totalBookings' => (int) ($apiStats['totalBookings'] ?? 0),
             'occupationRate' => (int) ($apiStats['occupationRate'] ?? 0),
             'activeProperties' => (int) ($apiStats['activeProperties'] ?? $apiStats['activeAssets'] ?? 0),
@@ -397,6 +388,7 @@ class OwnerRevenueController extends Controller
     {
         return [
             'totalRevenue' => 0,
+            'revenueThisMonth' => 0,
             'totalBookings' => 0,
             'occupationRate' => 0,
             'activeProperties' => 0,
