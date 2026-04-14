@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Owner;
 
+use App\Http\Controllers\Concerns\EvaluatesBookingRevenueEligibility;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\HasProprietaireId;
+use App\Services\BookingOwnerScopeService;
 use App\Services\DodoVroumApi\StatsService;
 use App\Services\DodoVroumApiService;
 use Illuminate\Support\Facades\Log;
@@ -12,11 +14,13 @@ use Inertia\Response;
 
 class OwnerRevenueController extends Controller
 {
+    use EvaluatesBookingRevenueEligibility;
     use HasProprietaireId;
-    
+
     public function __construct(
         protected DodoVroumApiService $apiService,
-        protected StatsService $statsService
+        protected StatsService $statsService,
+        protected BookingOwnerScopeService $bookingOwnerScopeService
     ) {
     }
 
@@ -41,27 +45,36 @@ class OwnerRevenueController extends Controller
                 ]);
             }
             
-            // Essayer d'abord d'utiliser l'endpoint API dédié (si implémenté côté NestJS)
-            // Cet endpoint doit utiliser des agrégations SQL pour de meilleures performances
+            // Essayer d'abord l'endpoint API dédié (NestJS). Tant que l'API n'est pas
+            // garantie isolée par propriétaire, on n'accepte la réponse que si elle
+            // contient explicitement l'ownerId du connecté (sinon fallback local).
             $apiStats = $this->statsService->getOwnerStats($proprietaireId);
-            
-            // Si l'API retourne des données valides (pas null), les utiliser
-            if ($apiStats !== null && (isset($apiStats['totalRevenue']) || isset($apiStats['chartData']))) {
-                Log::info('Utilisation des stats depuis l\'API NestJS', [
+
+            $hasApiPayload = $apiStats !== null
+                && (isset($apiStats['totalRevenue']) || isset($apiStats['chartData']));
+            $apiOwnerMatches = $hasApiPayload
+                && $this->apiOwnerStatsExplicitlyMatchConnectedOwner($apiStats, $proprietaireId);
+
+            if ($hasApiPayload && $apiOwnerMatches) {
+                Log::info('Utilisation des stats depuis l\'API NestJS (ownerId explicite conforme)', [
                     'ownerId' => $proprietaireId,
                 ]);
-                
-                // Adapter le format de l'API au format attendu par le frontend
+
                 $stats = $this->adaptApiStatsToFrontend($apiStats);
-                
+
                 return Inertia::render('Owner/Revenue', [
                     'stats' => $stats,
                 ]);
             }
-            
-            // Fallback : Si l'endpoint n'existe pas encore (404) ou retourne null,
-            // calculer les stats localement depuis les données de l'API
-            Log::info('Endpoint API stats non disponible, utilisation du calcul local', [
+
+            if ($hasApiPayload && ! $apiOwnerMatches) {
+                Log::warning('Stats API NestJS ignorées : ownerId absent ou non conforme au propriétaire connecté, calcul local.', [
+                    'expectedOwnerId' => $proprietaireId,
+                    'responseKeys' => array_keys($apiStats),
+                ]);
+            }
+
+            Log::info('Endpoint API stats indisponible ou non fiable, utilisation du calcul local', [
                 'ownerId' => $proprietaireId,
             ]);
             
@@ -106,12 +119,8 @@ class OwnerRevenueController extends Controller
             // Double vérification côté serveur pour les réservations
             $bookings = [];
             foreach ($allBookings as $booking) {
-                $bookingProprietaireId = $this->extractBookingOwnerId($booking);
-                
-                if ($bookingProprietaireId && (
-                    (string) $bookingProprietaireId === (string) $proprietaireId ||
-                    (is_numeric($bookingProprietaireId) && is_numeric($proprietaireId) && (int) $bookingProprietaireId === (int) $proprietaireId)
-                )) {
+                $bookingProprietaireId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+                if ($this->bookingOwnerScopeService->matchesProprietaire($bookingProprietaireId, $proprietaireId)) {
                     $bookings[] = $booking;
                 }
             }
@@ -131,33 +140,6 @@ class OwnerRevenueController extends Controller
     }
 
     /**
-     * Extraire le proprietaireId d'une réservation
-     */
-    private function extractBookingOwnerId(array $booking): ?string
-    {
-        // PRIORITÉ 1 : Résidence ou véhicule inclus dans la réservation
-        if (isset($booking['residence']) && is_array($booking['residence'])) {
-            return $booking['residence']['proprietaireId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['owner_id'] ?? null;
-        }
-        if (isset($booking['vehicle']) && is_array($booking['vehicle'])) {
-            return $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['owner_id'] ?? null;
-        }
-        if (isset($booking['voiture']) && is_array($booking['voiture'])) {
-            return $booking['voiture']['proprietaireId'] ?? $booking['voiture']['proprietaire_id'] ?? $booking['voiture']['ownerId'] ?? $booking['voiture']['owner_id'] ?? null;
-        }
-        
-        // PRIORITÉ 2 : Les champs directs de la réservation
-        if (isset($booking['ownerId']) && !empty($booking['ownerId'])) {
-            return $booking['ownerId'];
-        }
-        if (isset($booking['proprietaireId']) && !empty($booking['proprietaireId'])) {
-            return $booking['proprietaireId'];
-        }
-        
-        return null;
-    }
-
-    /**
      * Calculer les statistiques de revenus avec évolution temporelle
      */
     private function calculateRevenueStats(array $residences, array $vehicles, array $bookings): array
@@ -165,39 +147,7 @@ class OwnerRevenueController extends Controller
         $now = new \DateTime();
         $lastMonth = (clone $now)->modify('-1 month');
         
-        // Calculer les revenus totaux (90% du prix total pour le propriétaire)
-        // Inclure uniquement les réservations confirmées par le propriétaire (avec ownerConfirmedAt)
-        // ou terminées, mais exclure les annulées et les en attente
-        $validBookings = array_filter($bookings, function($booking) {
-            $status = strtolower($booking['status'] ?? 'pending');
-            
-            // Exclure les réservations annulées
-            if (in_array($status, ['cancelled', 'canceled', 'annulée', 'annulee', 'annule'])) {
-                return false;
-            }
-            
-            // Vérifier si le propriétaire a confirmé la réservation
-            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
-            
-            // Inclure si :
-            // 1. Le propriétaire a confirmé (ownerConfirmedAt existe)
-            // 2. Le statut est "confirmed" ou "confirmee" (même sans ownerConfirmedAt, au cas où)
-            // 3. Le statut est "completed" ou "terminée" (séjour terminé)
-            if (!empty($ownerConfirmedAt)) {
-                return true; // Confirmée par le propriétaire
-            }
-            
-            if (in_array($status, ['confirmed', 'confirmee', 'confirmée'])) {
-                return true; // Statut confirmé
-            }
-            
-            if (in_array($status, ['completed', 'terminee', 'terminée'])) {
-                return true; // Séjour terminé
-            }
-            
-            // Exclure les réservations en attente (pending)
-            return false;
-        });
+        $validBookings = array_filter($bookings, fn (array $b) => $this->isEligibleForRevenue($b));
         
         $totalRevenue = 0;
         $totalBookings = count($validBookings); // Compter uniquement les réservations non annulées
@@ -323,6 +273,48 @@ class OwnerRevenueController extends Controller
             ],
             'chartData' => $chartDataArray,
         ];
+    }
+
+    /**
+     * La réponse NestJS doit inclure explicitement l'identifiant du propriétaire
+     * (ownerId / proprietaireId ou équivalent dans meta) et il doit correspondre
+     * au propriétaire connecté. Sinon on refuse la réponse (fuite cross-owner possible).
+     */
+    private function apiOwnerStatsExplicitlyMatchConnectedOwner(array $apiStats, string|int $proprietaireId): bool
+    {
+        $candidates = [
+            $apiStats['ownerId'] ?? null,
+            $apiStats['owner_id'] ?? null,
+            $apiStats['proprietaireId'] ?? null,
+            $apiStats['proprietaire_id'] ?? null,
+        ];
+
+        if (isset($apiStats['meta']) && is_array($apiStats['meta'])) {
+            $meta = $apiStats['meta'];
+            $candidates[] = $meta['ownerId'] ?? null;
+            $candidates[] = $meta['owner_id'] ?? null;
+            $candidates[] = $meta['proprietaireId'] ?? null;
+            $candidates[] = $meta['proprietaire_id'] ?? null;
+        }
+
+        $explicit = null;
+        foreach ($candidates as $value) {
+            if ($value !== null && $value !== '') {
+                $explicit = $value;
+                break;
+            }
+        }
+
+        if ($explicit === null) {
+            return false;
+        }
+
+        if ((string) $explicit === (string) $proprietaireId) {
+            return true;
+        }
+
+        return is_numeric($explicit) && is_numeric($proprietaireId)
+            && (int) $explicit === (int) $proprietaireId;
     }
 
     /**

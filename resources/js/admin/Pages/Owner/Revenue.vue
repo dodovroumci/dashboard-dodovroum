@@ -1,13 +1,16 @@
 <template>
   <div class="p-8 space-y-8 bg-slate-50/50 min-h-screen">
-    <div class="flex justify-between items-end">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
       <div>
         <h1 class="text-3xl font-bold tracking-tight text-slate-900">Finances</h1>
         <p class="text-slate-500">Suivi de vos revenus et performances immobilières.</p>
       </div>
       <div class="bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 flex items-center gap-3">
-        <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span class="text-sm font-medium">Actualisé en temps réel (GMT)</span>
+        <div class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+        </div>
+        <span class="text-sm font-semibold text-slate-700">Live: {{ currentTime }}</span>
       </div>
     </div>
 
@@ -65,8 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
 import StatCard from '../../Components/Owner/StatCard.vue';
 import OwnerLayout from '../../Components/Layouts/OwnerLayout.vue';
 import { Wallet, TrendingUp, CalendarCheck, Home } from 'lucide-vue-next';
@@ -75,11 +78,6 @@ defineOptions({
   layout: OwnerLayout,
 });
 
-const page = usePage();
-const loading = ref(true);
-const chartData = ref<Array<{ month: string; total: number }>>([]);
-
-// Props depuis le backend
 const props = defineProps<{
   stats?: {
     totalRevenue: number;
@@ -96,7 +94,24 @@ const props = defineProps<{
   };
 }>();
 
-// Stats par défaut si non fournies
+const loading = ref(true);
+const chartData = ref<Array<{ month: string; total: number }>>([]);
+const currentTime = ref<string>(new Date().toLocaleTimeString());
+let clockTimer: ReturnType<typeof setInterval> | undefined;
+let statsPollingTimer: ReturnType<typeof setInterval> | undefined;
+
+watch(
+  () => props.stats?.chartData,
+  (next) => {
+    if (next && Array.isArray(next) && next.length > 0) {
+      chartData.value = next;
+    } else {
+      chartData.value = [];
+    }
+  },
+  { deep: true },
+);
+
 const stats = computed(() => {
   return props.stats || {
     totalRevenue: 0,
@@ -217,19 +232,25 @@ const chartSeries = computed(() => [
 ]);
 
 onMounted(() => {
-  // Initialiser les données du graphique depuis les props ou utiliser des données par défaut
+  clockTimer = setInterval(() => {
+    currentTime.value = new Date().toLocaleTimeString();
+  }, 1000);
+
   if (stats.value.chartData && stats.value.chartData.length > 0) {
     chartData.value = stats.value.chartData;
   } else {
-    // Données par défaut si aucune donnée n'est fournie
-    chartData.value = [
-      { month: 'Oct', total: 450000 },
-      { month: 'Nov', total: 520000 },
-      { month: 'Dec', total: 890000 },
-      { month: 'Jan', total: 710000 },
-    ];
+    chartData.value = [];
   }
   loading.value = false;
+
+  statsPollingTimer = setInterval(() => {
+    router.reload({ only: ['stats'] });
+  }, 60000);
+});
+
+onUnmounted(() => {
+  if (clockTimer) clearInterval(clockTimer);
+  if (statsPollingTimer) clearInterval(statsPollingTimer);
 });
 </script>
 

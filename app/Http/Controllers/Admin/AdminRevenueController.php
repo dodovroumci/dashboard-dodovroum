@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\EvaluatesBookingRevenueEligibility;
 use App\Http\Controllers\Controller;
 use App\Services\DodoVroumApiService;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminRevenueController extends Controller
 {
+    use EvaluatesBookingRevenueEligibility;
+
     public function __construct(
         protected DodoVroumApiService $apiService
     ) {
@@ -21,17 +25,10 @@ class AdminRevenueController extends Controller
     public function index(): Response
     {
         try {
-            // Récupérer toutes les données (pas de filtre proprietaireId pour admin)
-            $allResidences = $this->apiService->getResidences([]);
-            $allVehicles = $this->apiService->getVehicles([]);
-            $allBookings = $this->apiService->getBookings([]);
-            
-            // Calculer les statistiques de revenus (commission DodoVroum = 10% du total)
-            $stats = $this->calculateRevenueStats($allResidences, $allVehicles, $allBookings);
-            
+            $stats = $this->fetchAdminRevenueStats();
         } catch (\Exception $e) {
             Log::error('Erreur récupération données revenus admin', ['error' => $e->getMessage()]);
-            
+
             $stats = $this->getDefaultStats();
         }
 
@@ -50,6 +47,51 @@ class AdminRevenueController extends Controller
     }
 
     /**
+     * Export CSV des commissions (même périmètre que le graphique admin).
+     */
+    public function exportCsv(): StreamedResponse
+    {
+        try {
+            $stats = $this->fetchAdminRevenueStats();
+        } catch (\Exception $e) {
+            Log::error('Erreur export CSV revenus admin', ['error' => $e->getMessage()]);
+            $stats = $this->getDefaultStats();
+        }
+
+        $filename = 'commissions-dodovroum-'.date('Y-m-d').'.csv';
+
+        return response()->streamDownload(function () use ($stats) {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+            fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
+            fputcsv($out, ['Mois', 'Commissions DodoVroum (10 %) — FCFA'], ';');
+            foreach ($stats['chartData'] ?? [] as $row) {
+                fputcsv($out, [$row['month'] ?? '', $row['total'] ?? 0], ';');
+            }
+            fputcsv($out, []);
+            fputcsv($out, ['Total sur la période affichée (graphique)', $stats['totalRevenue'] ?? 0], ';');
+            fputcsv($out, ['Réservations comptabilisées', $stats['totalBookings'] ?? 0], ';');
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @throws \Throwable
+     */
+    private function fetchAdminRevenueStats(): array
+    {
+        $allResidences = $this->apiService->getResidences([]);
+        $allVehicles = $this->apiService->getVehicles([]);
+        $allBookings = $this->apiService->getBookings([]);
+
+        return $this->calculateRevenueStats($allResidences, $allVehicles, $allBookings);
+    }
+
+    /**
      * Calculer les statistiques de revenus avec évolution temporelle
      * Pour l'admin : commission DodoVroum = 10% du prix total de chaque réservation
      */
@@ -57,56 +99,8 @@ class AdminRevenueController extends Controller
     {
         $now = new \DateTime();
         $lastMonth = (clone $now)->modify('-1 month');
-        
-        // Filtrer les réservations valides (confirmées ou terminées, exclure annulées et en attente)
-        // Même logique que AdminBookingController : vérifier si le séjour est terminé via endDate
-        $validBookings = array_filter($bookings, function($booking) {
-            $status = strtolower($booking['status'] ?? 'pending');
-            
-            // Exclure les réservations annulées
-            if (in_array($status, ['cancelled', 'canceled', 'annulée', 'annulee', 'annule'])) {
-                return false;
-            }
-            
-            // Vérifier si le séjour est terminé (date de fin passée)
-            $endDate = $booking['endDate'] ?? $booking['end_date'] ?? $booking['checkOutDate'] ?? null;
-            $isStayCompleted = false;
-            if ($endDate) {
-                try {
-                    $today = new \DateTime('today');
-                    $end = new \DateTime($endDate);
-                    $isStayCompleted = $today > $end;
-                } catch (\Exception $e) {
-                    // Ignorer les erreurs de date
-                }
-            }
-            
-            // PRIORITÉ 1: Si la date de fin est passée, la réservation est terminée (valide)
-            if ($isStayCompleted) {
-                return true;
-            }
-            
-            // Vérifier si le propriétaire a confirmé la réservation
-            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
-            
-            // PRIORITÉ 2: Si le propriétaire a confirmé (ownerConfirmedAt existe)
-            if (!empty($ownerConfirmedAt)) {
-                return true; // Confirmée par le propriétaire
-            }
-            
-            // PRIORITÉ 3: Le statut est "completed" ou "terminée" (séjour terminé selon l'API)
-            if (in_array($status, ['completed', 'terminee', 'terminée'])) {
-                return true; // Séjour terminé
-            }
-            
-            // PRIORITÉ 4: Le statut est "confirmed" ou "confirmee" (même sans ownerConfirmedAt, au cas où)
-            if (in_array($status, ['confirmed', 'confirmee', 'confirmée'])) {
-                return true; // Statut confirmé
-            }
-            
-            // Exclure les réservations en attente (pending)
-            return false;
-        });
+
+        $validBookings = array_filter($bookings, fn (array $b) => $this->isEligibleForRevenue($b));
         
         // Calculer les revenus totaux (commission DodoVroum = 10% du prix total)
         $totalRevenue = 0;

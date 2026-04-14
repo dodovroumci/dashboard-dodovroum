@@ -9,6 +9,7 @@ use App\Services\DodoVroumApi\BookingService;
 use App\Services\DodoVroumApi\ResidenceService;
 use App\Services\DodoVroumApi\VehicleService;
 use App\Services\DodoVroumApi\UserService;
+use App\Services\BookingOwnerScopeService;
 use App\Exceptions\DodoVroumApiException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,18 +29,22 @@ class OwnerBookingController extends Controller
     protected ResidenceService $residenceService;
     protected VehicleService $vehicleService;
 
+    protected BookingOwnerScopeService $bookingOwnerScopeService;
+
     public function __construct(
         DodoVroumApiService $apiService,
         BookingService $bookingService,
         UserService $userService,
         ResidenceService $residenceService,
-        VehicleService $vehicleService
+        VehicleService $vehicleService,
+        BookingOwnerScopeService $bookingOwnerScopeService
     ) {
         $this->apiService = $apiService;
         $this->bookingService = $bookingService;
         $this->userService = $userService;
         $this->residenceService = $residenceService;
         $this->vehicleService = $vehicleService;
+        $this->bookingOwnerScopeService = $bookingOwnerScopeService;
     }
 
     /**
@@ -100,115 +105,9 @@ class OwnerBookingController extends Controller
             ]);
             
             foreach ($allBookings as $booking) {
-                // Extraire le proprietaireId depuis la réservation (même logique que le tableau de bord)
-                // PRIORITÉ 1 : Résidence ou véhicule inclus dans la réservation
-                // PRIORITÉ 2 : Les champs directs de la réservation (ownerId/proprietaireId)
-                $bookingOwnerId = null;
-                
-                // Comme dans le tableau de bord : chercher d'abord dans residence/vehicle
-                if (isset($booking['residence']) && is_array($booking['residence'])) {
-                    $bookingOwnerId = $booking['residence']['proprietaireId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && (isset($booking['vehicle']) && is_array($booking['vehicle']))) {
-                    $bookingOwnerId = $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && (isset($booking['voiture']) && is_array($booking['voiture']))) {
-                    $bookingOwnerId = $booking['voiture']['proprietaireId'] ?? $booking['voiture']['proprietaire_id'] ?? $booking['voiture']['ownerId'] ?? $booking['voiture']['owner_id'] ?? null;
-                }
-                
-                // Si pas trouvé, essayer les champs directs de la réservation
-                if (!$bookingOwnerId && isset($booking['ownerId']) && !empty($booking['ownerId'])) {
-                    $bookingOwnerId = $booking['ownerId'];
-                }
-                if (!$bookingOwnerId && isset($booking['proprietaireId']) && !empty($booking['proprietaireId'])) {
-                    $bookingOwnerId = $booking['proprietaireId'];
-                }
-                if (!$bookingOwnerId && isset($booking['owner_id']) && !empty($booking['owner_id'])) {
-                    $bookingOwnerId = $booking['owner_id'];
-                }
-                if (!$bookingOwnerId && isset($booking['proprietaire_id']) && !empty($booking['proprietaire_id'])) {
-                    $bookingOwnerId = $booking['proprietaire_id'];
-                }
-                
-                // Si pas trouvé, chercher dans l'offre combinée
-                if (!$bookingOwnerId && isset($booking['offer']) && is_array($booking['offer'])) {
-                    // Pour les offres combinées, vérifier via l'offre elle-même
-                    $offer = $booking['offer'];
-                    $bookingOwnerId = $offer['proprietaireId'] ?? $offer['ownerId'] ?? null;
-                    
-                    // Si pas trouvé, essayer via la résidence de l'offre
-                    if (!$bookingOwnerId && isset($offer['residence']) && is_array($offer['residence'])) {
-                        $bookingOwnerId = $offer['residence']['proprietaireId'] ?? $offer['residence']['proprietaire_id'] ?? $offer['residence']['ownerId'] ?? $offer['residence']['owner_id'] ?? null;
-                    }
-                    
-                    // Si toujours pas trouvé, essayer via le véhicule de l'offre
-                    if (!$bookingOwnerId && isset($offer['vehicle']) && is_array($offer['vehicle'])) {
-                        $bookingOwnerId = $offer['vehicle']['proprietaireId'] ?? $offer['vehicle']['proprietaire_id'] ?? $offer['vehicle']['ownerId'] ?? $offer['vehicle']['owner_id'] ?? null;
-                    }
-                    if (!$bookingOwnerId && isset($offer['voiture']) && is_array($offer['voiture'])) {
-                        $bookingOwnerId = $offer['voiture']['proprietaireId'] ?? $offer['voiture']['proprietaire_id'] ?? $offer['voiture']['ownerId'] ?? $offer['voiture']['owner_id'] ?? null;
-                    }
-                }
-                
-                // Si on a seulement l'ID de la résidence (sans objet résidence complet), récupérer la résidence complète
-                if (!$bookingOwnerId && isset($booking['residenceId']) && !empty($booking['residenceId'])) {
-                    // Si on a seulement l'ID de la résidence, essayer de récupérer la résidence complète
-                    try {
-                        $residence = $this->apiService->getResidence($booking['residenceId']);
-                        if ($residence && is_array($residence)) {
-                            $bookingOwnerId = $residence['proprietaireId'] ?? $residence['proprietaire_id'] ?? $residence['ownerId'] ?? $residence['owner_id'] ?? null;
-                        }
-                    } catch (\Exception $e) {
-                        // Ignorer l'erreur et continuer
-                    }
-                }
-                
-                // Si on a seulement l'ID du véhicule (sans objet véhicule complet), récupérer le véhicule complet
-                if (!$bookingOwnerId && isset($booking['vehicleId']) && !empty($booking['vehicleId'])) {
-                    // Si on a seulement l'ID du véhicule, essayer de récupérer le véhicule complet
-                    try {
-                        $vehicle = $this->apiService->getVehicle($booking['vehicleId']);
-                        if ($vehicle && is_array($vehicle)) {
-                            $bookingOwnerId = $vehicle['proprietaireId'] ?? $vehicle['proprietaire_id'] ?? $vehicle['ownerId'] ?? $vehicle['owner_id'] ?? null;
-                        }
-                    } catch (\Exception $e) {
-                        // Ignorer l'erreur et continuer
-                    }
-                }
-                
-                // Si on a seulement l'ID de l'offre (sans objet offre complet), récupérer l'offre complète
-                if (!$bookingOwnerId && isset($booking['offerId']) && !empty($booking['offerId'])) {
-                    // Si on a seulement l'ID de l'offre, essayer de récupérer l'offre complète
-                    try {
-                        $offer = $this->apiService->getComboOffer($booking['offerId']);
-                        if ($offer && is_array($offer)) {
-                            $bookingOwnerId = $offer['proprietaireId'] ?? $offer['proprietaire_id'] ?? $offer['ownerId'] ?? $offer['owner_id'] ?? null;
-                            // Si pas trouvé, essayer via la résidence de l'offre
-                            if (!$bookingOwnerId && isset($offer['residence']) && is_array($offer['residence'])) {
-                                $bookingOwnerId = $offer['residence']['proprietaireId'] ?? $offer['residence']['proprietaire_id'] ?? $offer['residence']['ownerId'] ?? $offer['residence']['owner_id'] ?? null;
-                            }
-                            // Si toujours pas trouvé, essayer via le véhicule de l'offre
-                            if (!$bookingOwnerId && isset($offer['vehicle']) && is_array($offer['vehicle'])) {
-                                $bookingOwnerId = $offer['vehicle']['proprietaireId'] ?? $offer['vehicle']['proprietaire_id'] ?? $offer['vehicle']['ownerId'] ?? $offer['vehicle']['owner_id'] ?? null;
-                            }
-                            if (!$bookingOwnerId && isset($offer['voiture']) && is_array($offer['voiture'])) {
-                                $bookingOwnerId = $offer['voiture']['proprietaireId'] ?? $offer['voiture']['proprietaire_id'] ?? $offer['voiture']['ownerId'] ?? $offer['voiture']['owner_id'] ?? null;
-                            }
-                        }
-                    } catch (\Exception $e) {
-                        // Ignorer l'erreur et continuer
-                    }
-                }
-                
-                // Comparer en string ET en int pour gérer les cas où l'un est string et l'autre int
-                $matches = false;
-                if ($bookingOwnerId) {
-                    $matches = (
-                        (string) $bookingOwnerId === (string) $proprietaireId ||
-                        (is_numeric($bookingOwnerId) && is_numeric($proprietaireId) && (int) $bookingOwnerId === (int) $proprietaireId)
-                    );
-                }
-                
+                $bookingOwnerId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+                $matches = $this->bookingOwnerScopeService->matchesProprietaire($bookingOwnerId, $proprietaireId);
+
                 // Log pour déboguer (seulement les premières réservations pour éviter trop de logs)
                 if (count($bookings) < 3 && count($allBookings) > 0) {
                     Log::debug('OwnerBookingController::index - Filtrage réservation', [
@@ -224,8 +123,7 @@ class OwnerBookingController extends Controller
                         'vehicle_ownerId' => isset($booking['vehicle']['proprietaireId']) || isset($booking['vehicle']['ownerId']) ? ($booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['ownerId'] ?? null) : null,
                     ]);
                 }
-                
-                // Si le proprietaireId correspond, ajouter la réservation
+
                 if ($matches) {
                     $bookings[] = $booking;
                 }
@@ -503,42 +401,10 @@ class OwnerBookingController extends Controller
                 abort(403, 'Accès non autorisé');
             }
 
-            $bookingOwnerId = null;
-            if (isset($booking['residence']) && is_array($booking['residence'])) {
-                $bookingOwnerId = $booking['residence']['proprietaireId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['vehicle']) && is_array($booking['vehicle']))) {
-                $bookingOwnerId = $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['voiture']) && is_array($booking['voiture']))) {
-                $bookingOwnerId = $booking['voiture']['proprietaireId'] ?? $booking['voiture']['proprietaire_id'] ?? $booking['voiture']['ownerId'] ?? $booking['voiture']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && isset($booking['ownerId']) && !empty($booking['ownerId'])) {
-                $bookingOwnerId = $booking['ownerId'];
-            }
-            if (!$bookingOwnerId && isset($booking['proprietaireId']) && !empty($booking['proprietaireId'])) {
-                $bookingOwnerId = $booking['proprietaireId'];
-            }
-            if (!$bookingOwnerId && isset($booking['offer']) && is_array($booking['offer'])) {
-                $offer = $booking['offer'];
-                $bookingOwnerId = $offer['proprietaireId'] ?? $offer['proprietaire_id'] ?? $offer['ownerId'] ?? $offer['owner_id'] ?? null;
-                if (!$bookingOwnerId && isset($offer['residence']) && is_array($offer['residence'])) {
-                    $bookingOwnerId = $offer['residence']['proprietaireId'] ?? $offer['residence']['proprietaire_id'] ?? $offer['residence']['ownerId'] ?? $offer['residence']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && isset($offer['vehicle']) && is_array($offer['vehicle'])) {
-                    $bookingOwnerId = $offer['vehicle']['proprietaireId'] ?? $offer['vehicle']['proprietaire_id'] ?? $offer['vehicle']['ownerId'] ?? $offer['vehicle']['owner_id'] ?? null;
-                }
-            }
+            $bookingOwnerId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+            $matches = $this->bookingOwnerScopeService->matchesProprietaire($bookingOwnerId, $proprietaireId);
 
-            $matches = false;
-            if ($bookingOwnerId) {
-                $matches = (
-                    (string) $bookingOwnerId === (string) $proprietaireId ||
-                    (is_numeric($bookingOwnerId) && is_numeric($proprietaireId) && (int) $bookingOwnerId === (int) $proprietaireId)
-                );
-            }
-
-            if (!$matches) {
+            if (! $matches) {
                 abort(404, 'Réservation non trouvée ou accès non autorisé');
             }
 
@@ -828,59 +694,10 @@ class OwnerBookingController extends Controller
                     ->with('error', 'Réservation non trouvée.');
             }
 
-            // Vérifier que la réservation appartient au propriétaire (même logique que dans index)
-            $bookingOwnerId = null;
-            
-            if (isset($booking['residence']) && is_array($booking['residence'])) {
-                $bookingOwnerId = $booking['residence']['proprietaireId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['vehicle']) && is_array($booking['vehicle']))) {
-                $bookingOwnerId = $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['voiture']) && is_array($booking['voiture']))) {
-                $bookingOwnerId = $booking['voiture']['proprietaireId'] ?? $booking['voiture']['proprietaire_id'] ?? $booking['voiture']['ownerId'] ?? $booking['voiture']['owner_id'] ?? null;
-            }
-            
-            // Champs directs de la réservation
-            if (!$bookingOwnerId && isset($booking['ownerId']) && !empty($booking['ownerId'])) {
-                $bookingOwnerId = $booking['ownerId'];
-            }
-            if (!$bookingOwnerId && isset($booking['proprietaireId']) && !empty($booking['proprietaireId'])) {
-                $bookingOwnerId = $booking['proprietaireId'];
-            }
-            if (!$bookingOwnerId && isset($booking['owner_id']) && !empty($booking['owner_id'])) {
-                $bookingOwnerId = $booking['owner_id'];
-            }
-            if (!$bookingOwnerId && isset($booking['proprietaire_id']) && !empty($booking['proprietaire_id'])) {
-                $bookingOwnerId = $booking['proprietaire_id'];
-            }
-            
-            // Dans l'offre combinée si présente
-            if (!$bookingOwnerId && isset($booking['offer']) && is_array($booking['offer'])) {
-                $offer = $booking['offer'];
-                $bookingOwnerId = $offer['proprietaireId'] ?? $offer['proprietaire_id'] ?? $offer['ownerId'] ?? $offer['owner_id'] ?? null;
-                
-                if (!$bookingOwnerId && isset($offer['residence']) && is_array($offer['residence'])) {
-                    $bookingOwnerId = $offer['residence']['proprietaireId'] ?? $offer['residence']['proprietaire_id'] ?? $offer['residence']['ownerId'] ?? $offer['residence']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && isset($offer['vehicle']) && is_array($offer['vehicle'])) {
-                    $bookingOwnerId = $offer['vehicle']['proprietaireId'] ?? $offer['vehicle']['proprietaire_id'] ?? $offer['vehicle']['ownerId'] ?? $offer['vehicle']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && isset($offer['voiture']) && is_array($offer['voiture'])) {
-                    $bookingOwnerId = $offer['voiture']['proprietaireId'] ?? $offer['voiture']['proprietaire_id'] ?? $offer['voiture']['ownerId'] ?? $offer['voiture']['owner_id'] ?? null;
-                }
-            }
-            
-            // Comparer en string ET en int pour gérer les cas où l'un est string et l'autre int
-            $matches = false;
-            if ($bookingOwnerId) {
-                $matches = (
-                    (string) $bookingOwnerId === (string) $proprietaireId ||
-                    (is_numeric($bookingOwnerId) && is_numeric($proprietaireId) && (int) $bookingOwnerId === (int) $proprietaireId)
-                );
-            }
-            
-            if (!$matches) {
+            $bookingOwnerId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+            $matches = $this->bookingOwnerScopeService->matchesProprietaire($bookingOwnerId, $proprietaireId);
+
+            if (! $matches) {
                 Log::warning('Tentative d\'approbation d\'une réservation qui n\'appartient pas au propriétaire', [
                     'booking_id' => $id,
                     'booking_owner_id' => $bookingOwnerId,
@@ -952,59 +769,10 @@ class OwnerBookingController extends Controller
                     ->with('error', 'Réservation non trouvée.');
             }
 
-            // Vérifier que la réservation appartient au propriétaire (même logique que dans index)
-            $bookingOwnerId = null;
-            
-            if (isset($booking['residence']) && is_array($booking['residence'])) {
-                $bookingOwnerId = $booking['residence']['proprietaireId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['vehicle']) && is_array($booking['vehicle']))) {
-                $bookingOwnerId = $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['owner_id'] ?? null;
-            }
-            if (!$bookingOwnerId && (isset($booking['voiture']) && is_array($booking['voiture']))) {
-                $bookingOwnerId = $booking['voiture']['proprietaireId'] ?? $booking['voiture']['proprietaire_id'] ?? $booking['voiture']['ownerId'] ?? $booking['voiture']['owner_id'] ?? null;
-            }
-            
-            // Champs directs de la réservation
-            if (!$bookingOwnerId && isset($booking['ownerId']) && !empty($booking['ownerId'])) {
-                $bookingOwnerId = $booking['ownerId'];
-            }
-            if (!$bookingOwnerId && isset($booking['proprietaireId']) && !empty($booking['proprietaireId'])) {
-                $bookingOwnerId = $booking['proprietaireId'];
-            }
-            if (!$bookingOwnerId && isset($booking['owner_id']) && !empty($booking['owner_id'])) {
-                $bookingOwnerId = $booking['owner_id'];
-            }
-            if (!$bookingOwnerId && isset($booking['proprietaire_id']) && !empty($booking['proprietaire_id'])) {
-                $bookingOwnerId = $booking['proprietaire_id'];
-            }
-            
-            // Dans l'offre combinée si présente
-            if (!$bookingOwnerId && isset($booking['offer']) && is_array($booking['offer'])) {
-                $offer = $booking['offer'];
-                $bookingOwnerId = $offer['proprietaireId'] ?? $offer['proprietaire_id'] ?? $offer['ownerId'] ?? $offer['owner_id'] ?? null;
-                
-                if (!$bookingOwnerId && isset($offer['residence']) && is_array($offer['residence'])) {
-                    $bookingOwnerId = $offer['residence']['proprietaireId'] ?? $offer['residence']['proprietaire_id'] ?? $offer['residence']['ownerId'] ?? $offer['residence']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && isset($offer['vehicle']) && is_array($offer['vehicle'])) {
-                    $bookingOwnerId = $offer['vehicle']['proprietaireId'] ?? $offer['vehicle']['proprietaire_id'] ?? $offer['vehicle']['ownerId'] ?? $offer['vehicle']['owner_id'] ?? null;
-                }
-                if (!$bookingOwnerId && isset($offer['voiture']) && is_array($offer['voiture'])) {
-                    $bookingOwnerId = $offer['voiture']['proprietaireId'] ?? $offer['voiture']['proprietaire_id'] ?? $offer['voiture']['ownerId'] ?? $offer['voiture']['owner_id'] ?? null;
-                }
-            }
-            
-            // Comparer en string ET en int pour gérer les cas où l'un est string et l'autre int
-            $matches = false;
-            if ($bookingOwnerId) {
-                $matches = (
-                    (string) $bookingOwnerId === (string) $proprietaireId ||
-                    (is_numeric($bookingOwnerId) && is_numeric($proprietaireId) && (int) $bookingOwnerId === (int) $proprietaireId)
-                );
-            }
-            
-            if (!$matches) {
+            $bookingOwnerId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+            $matches = $this->bookingOwnerScopeService->matchesProprietaire($bookingOwnerId, $proprietaireId);
+
+            if (! $matches) {
                 Log::warning('Tentative de rejet d\'une réservation qui n\'appartient pas au propriétaire', [
                     'booking_id' => $id,
                     'booking_owner_id' => $bookingOwnerId,
@@ -1066,12 +834,9 @@ class OwnerBookingController extends Controller
                 return redirect()->route('owner.bookings.index')->with('error', 'Réservation non trouvée.');
             }
 
-            $bookingOwnerId = $this->extractBookingOwnerId($booking);
-            $matches = $bookingOwnerId && (
-                (string) $bookingOwnerId === (string) $proprietaireId
-                || (is_numeric($bookingOwnerId) && is_numeric($proprietaireId) && (int) $bookingOwnerId === (int) $proprietaireId)
-            );
-            if (!$matches) {
+            $bookingOwnerId = $this->bookingOwnerScopeService->resolveOwnerIdForBooking($booking);
+            $matches = $this->bookingOwnerScopeService->matchesProprietaire($bookingOwnerId, $proprietaireId);
+            if (! $matches) {
                 Log::warning('Tentative confirm-checkout sur une réservation qui n\'appartient pas au propriétaire', ['booking_id' => $id]);
                 return redirect()->route('owner.bookings.index')->with('error', 'Réservation non trouvée ou accès non autorisé.');
             }
@@ -1085,31 +850,6 @@ class OwnerBookingController extends Controller
             Log::error('Erreur confirm-checkout', ['id' => $id, 'error' => $e->getMessage()]);
             return redirect()->route('owner.bookings.show', $id)->with('error', 'Une erreur est survenue lors de la confirmation du checkout.');
         }
-    }
-
-    private function extractBookingOwnerId(array $booking): ?string
-    {
-        if (isset($booking['residence']) && is_array($booking['residence'])) {
-            $id = $booking['residence']['proprietaireId'] ?? $booking['residence']['ownerId'] ?? $booking['residence']['proprietaire_id'] ?? $booking['residence']['owner_id'] ?? null;
-            if ($id) return (string) $id;
-        }
-        if (isset($booking['vehicle']) && is_array($booking['vehicle'])) {
-            $id = $booking['vehicle']['proprietaireId'] ?? $booking['vehicle']['ownerId'] ?? $booking['vehicle']['proprietaire_id'] ?? $booking['vehicle']['owner_id'] ?? null;
-            if ($id) return (string) $id;
-        }
-        if (isset($booking['voiture']) && is_array($booking['voiture'])) {
-            $id = $booking['voiture']['proprietaireId'] ?? $booking['voiture']['ownerId'] ?? null;
-            if ($id) return (string) $id;
-        }
-        foreach (['ownerId', 'proprietaireId', 'owner_id', 'proprietaire_id'] as $key) {
-            if (!empty($booking[$key])) return (string) $booking[$key];
-        }
-        if (isset($booking['offer']) && is_array($booking['offer'])) {
-            $offer = $booking['offer'];
-            $id = $offer['proprietaireId'] ?? $offer['ownerId'] ?? null;
-            if ($id) return (string) $id;
-        }
-        return null;
     }
 
     /**

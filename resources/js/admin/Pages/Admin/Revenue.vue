@@ -33,10 +33,15 @@
         <div class="flex items-center justify-between mb-8">
           <div>
             <h3 class="font-black text-xl text-slate-900 tracking-tight">Flux de Trésorerie</h3>
-            <p class="text-sm text-slate-500">Évolution mensuelle du CA (FCFA)</p>
+            <p class="text-sm text-slate-500">Évolution mensuelle des commissions (FCFA)</p>
           </div>
           <div class="flex gap-2">
-            <button class="px-4 py-2 text-xs font-bold bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors">Export CSV</button>
+            <a
+              :href="route('admin.revenue.export')"
+              class="px-4 py-2 text-xs font-bold bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors inline-flex items-center"
+            >
+              Export CSV
+            </a>
           </div>
         </div>
 
@@ -85,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, onUnmounted } from 'vue';
+import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import StatCard from '../../Components/Owner/StatCard.vue';
 import AdminLayout from '../../Components/Layouts/AdminLayout.vue';
@@ -109,6 +114,18 @@ interface DashboardStats {
 const props = defineProps<{ stats?: Partial<DashboardStats> }>();
 const loading = ref<boolean>(true);
 const chartData = ref<Array<{ month: string; total: number }>>([]);
+
+watch(
+  () => props.stats?.chartData,
+  (next) => {
+    if (next && Array.isArray(next) && next.length > 0) {
+      chartData.value = next;
+    } else {
+      chartData.value = [];
+    }
+  },
+  { deep: true },
+);
 const currentTime = ref<string>(new Date().toLocaleTimeString());
 let timer: ReturnType<typeof setInterval> | undefined;
 let dataPollingTimer: ReturnType<typeof setInterval> | undefined;
@@ -123,7 +140,7 @@ const stats = computed(() => ({
 }));
 
 const statCards = computed(() => [
-  { title: "CA Total", value: formatPrice(stats.value.totalRevenue), trend: stats.value.trends.totalRevenue, icon: Wallet, color: "bg-blue-600" },
+  { title: "Commissions DodoVroum (10%)", value: formatPrice(stats.value.totalRevenue), trend: stats.value.trends.totalRevenue, icon: Wallet, color: "bg-blue-600" },
   { title: "Réservations", value: stats.value.totalBookings, trend: stats.value.trends.bookings, icon: CalendarCheck, color: "bg-indigo-600" },
   { title: "Occupation", value: `${stats.value.occupationRate}%`, trend: stats.value.trends.occupation, icon: TrendingUp, color: "bg-emerald-600" },
   { title: "Biens Actifs", value: stats.value.activeProperties, trend: stats.value.trends.properties, icon: Home, color: "bg-slate-900" },
@@ -171,7 +188,7 @@ const chartOptions = computed(() => ({
   },
 }));
 
-const chartSeries = computed(() => [{ name: 'Revenus', data: chartData.value.map((d: { month: string; total: number }) => d.total) }]);
+const chartSeries = computed(() => [{ name: 'Commissions (10%)', data: chartData.value.map((d: { month: string; total: number }) => d.total) }]);
 
 // Vérifier si les données sont réellement vides (tous les totaux à 0)
 const isEmptyState = computed(() => {
