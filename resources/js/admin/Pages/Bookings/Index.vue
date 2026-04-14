@@ -62,6 +62,7 @@
         <select v-model="filters.status" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
           <option value="">Tous les statuts</option>
           <option value="pending">En attente</option>
+          <option value="awaiting_payment">En attente de paiement</option>
           <option value="confirmed">Confirmée</option>
           <option value="cancelled">Annulée</option>
           <option value="completed">Terminée</option>
@@ -559,6 +560,8 @@ const formatNumber = (num: number): string => {
 const formatStatus = (status: string): string => {
   const statusLower = status.toLowerCase();
   const statusMap: Record<string, string> = {
+    awaiting_payment: 'En attente de paiement',
+    awaitingpayment: 'En attente de paiement',
     pending: 'En attente',
     'en attente': 'En attente',
     confirmed: 'Confirmée',
@@ -592,6 +595,9 @@ const canApproveOrReject = (booking: { status: string; isPendingApproval?: boole
 
 const getStatusClass = (status: string): string => {
   const statusLower = status.toLowerCase();
+  if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'bg-orange-100 text-orange-900';
+  }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-100 text-emerald-800';
   } else if (statusLower === 'pending' || statusLower === 'en attente') {

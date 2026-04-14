@@ -197,6 +197,8 @@ class AdminDashboardController extends Controller
                     $finalStatus = 'terminée';
                 } elseif ($isStayCompleted) {
                     $finalStatus = 'terminée';
+                } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                    $finalStatus = 'awaiting_payment';
                 } elseif (!empty($ownerConfirmedAt)) {
                     $finalStatus = 'confirmed';
                 } elseif ($statusUpper === 'PENDING') {
@@ -210,6 +212,8 @@ class AdminDashboardController extends Controller
                 $statusFormatted = 'En attente';
                 if (strtolower($finalStatus) === 'confirmed' || strtolower($finalStatus) === 'confirmee') {
                     $statusFormatted = 'Confirmée';
+                } elseif (strtolower($finalStatus) === 'awaiting_payment') {
+                    $statusFormatted = 'En attente de paiement';
                 } elseif (strtolower($finalStatus) === 'pending') {
                     $statusFormatted = 'En attente';
                 } elseif (strtolower($finalStatus) === 'cancelled' || strtolower($finalStatus) === 'canceled' || strtolower($finalStatus) === 'annulée' || strtolower($finalStatus) === 'annulee') {

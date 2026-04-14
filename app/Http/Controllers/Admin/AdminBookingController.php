@@ -214,6 +214,10 @@ class AdminBookingController extends Controller
                         ]);
                     }
                 }
+                // En attente de paiement (API NestJS) — avant confirmation propriétaire pour garder le badge distinct
+                elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                    $finalStatus = 'awaiting_payment';
+                }
                 // PRIORITÉ 2: Si le propriétaire a confirmé (ownerConfirmedAt existe), le statut doit être "confirmed"
                 elseif (!empty($ownerConfirmedAt)) {
                     $finalStatus = 'confirmed';
@@ -489,6 +493,13 @@ class AdminBookingController extends Controller
                     return $bookingStatus === $requestedStatus;
                 });
                 $mappedBookings = array_values($mappedBookings);
+            }
+
+            // Sans filtre statut explicite : ne pas afficher les tentatives abandonnées (AWAITING_PAYMENT → awaiting_payment)
+            if (! $request->filled('status')) {
+                $mappedBookings = array_values(array_filter($mappedBookings, function ($booking) {
+                    return strtolower($booking['status'] ?? '') !== 'awaiting_payment';
+                }));
             }
 
             // Type de réservation
@@ -1173,6 +1184,9 @@ class AdminBookingController extends Controller
                         'final_status' => $finalStatus,
                     ]);
                 }
+            }
+            elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                $finalStatus = 'awaiting_payment';
             }
             // PRIORITÉ 2: Si le propriétaire a confirmé (ownerConfirmedAt existe), le statut doit être "confirmed"
             elseif (!empty($ownerConfirmedAt)) {

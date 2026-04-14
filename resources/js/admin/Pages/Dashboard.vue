@@ -368,6 +368,13 @@ const formatPrice = (value: number | string): string => {
 
 const getStatusClass = (status: string): string => {
   const statusLower = status.toLowerCase();
+  if (
+    statusLower === 'awaiting_payment' ||
+    statusLower === 'awaitingpayment' ||
+    statusLower === 'en attente de paiement'
+  ) {
+    return 'bg-orange-100 text-orange-900';
+  }
   if (statusLower === 'confirmée' || statusLower === 'confirmed' || statusLower === 'confirmee') {
     return 'bg-emerald-100 text-emerald-700';
   } else if (statusLower === 'en attente' || statusLower === 'pending') {

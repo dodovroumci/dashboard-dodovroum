@@ -515,7 +515,10 @@ const canApproveOrReject = (status: string): boolean => {
 const formatStatus = (status?: string): string => {
   if (!status) return 'Inconnu';
   const statusLower = status.toLowerCase();
-  
+
+  if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'En attente de paiement';
+  }
   if (statusLower === 'pending' || statusLower === 'en_attente') {
     return 'En attente';
   } else if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
@@ -531,7 +534,10 @@ const formatStatus = (status?: string): string => {
 const getStatusClass = (status?: string): string => {
   if (!status) return 'bg-slate-100 text-slate-700';
   const statusLower = status.toLowerCase();
-  
+
+  if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'bg-orange-100 text-orange-900';
+  }
   if (statusLower === 'pending' || statusLower === 'en_attente') {
     return 'bg-amber-100 text-amber-700';
   } else if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {

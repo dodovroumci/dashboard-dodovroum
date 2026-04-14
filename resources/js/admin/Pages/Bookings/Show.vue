@@ -843,6 +843,8 @@ const getOfferImage = (): string | null => {
 const formatStatus = (status: string): string => {
   const statusLower = status.toLowerCase();
   const statusMap: Record<string, string> = {
+    awaiting_payment: 'En attente de paiement',
+    awaitingpayment: 'En attente de paiement',
     pending: 'En attente',
     'en attente': 'En attente',
     confirmed: 'Confirmée',
@@ -860,6 +862,9 @@ const formatStatus = (status: string): string => {
 
 const getStatusClass = (status: string): string => {
   const statusLower = status.toLowerCase();
+  if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'bg-orange-100 text-orange-900';
+  }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-100 text-emerald-800';
   } else if (statusLower === 'pending' || statusLower === 'en attente') {
@@ -874,6 +879,9 @@ const getStatusClass = (status: string): string => {
 
 const getStatusBadgeClass = (status: string): string => {
   const statusLower = status.toLowerCase();
+  if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'bg-orange-500 text-white';
+  }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-500 text-white';
   } else if (statusLower === 'pending' || statusLower === 'en attente') {

@@ -366,6 +366,8 @@ class OwnerDashboardController extends Controller
                     $finalStatus = 'terminée';
                 } elseif ($isStayCompleted) {
                     $finalStatus = 'terminée';
+                } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                    $finalStatus = 'awaiting_payment';
                 } elseif (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
                     $finalStatus = 'pending';
                 } else {
@@ -375,6 +377,8 @@ class OwnerDashboardController extends Controller
                 $statusFormatted = 'En attente';
                 if (in_array(strtolower($finalStatus), ['confirmed', 'confirmee'])) {
                     $statusFormatted = 'Confirmée';
+                } elseif (strtolower($finalStatus) === 'awaiting_payment') {
+                    $statusFormatted = 'En attente de paiement';
                 } elseif (strtolower($finalStatus) === 'pending') {
                     $statusFormatted = 'En attente';
                 } elseif (in_array(strtolower($finalStatus), ['cancelled', 'canceled', 'annulée', 'annulee'])) {

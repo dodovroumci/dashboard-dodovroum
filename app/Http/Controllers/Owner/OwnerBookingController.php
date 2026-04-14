@@ -230,6 +230,13 @@ class OwnerBookingController extends Controller
                     $bookings[] = $booking;
                 }
             }
+
+            // Sans filtre statut explicite : exclure les brouillons AWAITING_PAYMENT (tentatives abandonnées à l’étape paiement)
+            if (! $request->filled('status')) {
+                $bookings = array_values(array_filter($bookings, function ($booking) {
+                    return strtoupper($booking['status'] ?? '') !== 'AWAITING_PAYMENT';
+                }));
+            }
             
             Log::info('OwnerBookingController::index - Filtrage terminé', [
                 'proprietaireId' => $proprietaireId,
@@ -387,6 +394,8 @@ class OwnerBookingController extends Controller
                 // Afficher "Confirmée" uniquement si le propriétaire a bien confirmé (ownerConfirmedAt renseigné)
                 if (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
                     $finalStatus = 'pending';
+                } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                    $finalStatus = 'awaiting_payment';
                 } elseif ($statusUpper === 'PENDING') {
                     $finalStatus = 'pending';
                 } else {
@@ -689,6 +698,8 @@ class OwnerBookingController extends Controller
 
             if (!empty($checkOutAt)) {
                 $finalStatus = 'terminée';
+            } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                $finalStatus = 'awaiting_payment';
             } elseif ($statusUpper === 'PENDING') {
                 $finalStatus = 'pending';
             } elseif (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
