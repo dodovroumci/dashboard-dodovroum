@@ -79,8 +79,8 @@ class LoginController extends Controller
 
         // S'assurer que le token est dans userData
         if (isset($userData['token'])) {
-            // Stocker le token séparément aussi pour fallback
             Session::put('api_token', $userData['token']);
+            Session::put('nest_jwt_token', $userData['token']);
         }
         
         // Stocker les données utilisateur en session (incluant le token)
@@ -158,6 +158,7 @@ class LoginController extends Controller
         // Nettoyer la session API
         Session::forget('api_user');
         Session::forget('api_token');
+        Session::forget('nest_jwt_token');
         
         Auth::logout();
 

@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 
 class DodoVroumApiService
 {
@@ -190,36 +192,122 @@ class DodoVroumApiService
     }
 
     /**
+     * JWT NestJS stocké en session après login (prioritaire pour les appels « utilisateur »).
+     */
+    protected function getSessionJwt(): ?string
+    {
+        try {
+            if (! app()->bound('session')) {
+                return null;
+            }
+            $session = session();
+            if (method_exists($session, 'isStarted') && ! $session->isStarted()) {
+                return null;
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        foreach (['nest_jwt_token', 'api_token'] as $key) {
+            $t = Session::get($key);
+            if (is_string($t) && $t !== '') {
+                return $t;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Token pour la requête HTTP : session JWT (nest_jwt_token / api_token), puis ApiUser, puis compte admin (cache).
+     */
+    protected function resolveRequestToken(): ?string
+    {
+        $jwt = $this->getSessionJwt();
+        if ($jwt !== null) {
+            return $jwt;
+        }
+
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user && method_exists($user, 'getApiToken')) {
+                $t = $user->getApiToken();
+                if (is_string($t) && $t !== '') {
+                    return $t;
+                }
+            }
+        }
+
+        return $this->getAccessToken();
+    }
+
+    /**
+     * Si false : erreur 401 traitée sans renouveler le token admin (JWT utilisateur expiré / invalide).
+     */
+    protected function shouldRefreshAdminTokenOn401(): bool
+    {
+        if ($this->getSessionJwt()) {
+            return false;
+        }
+
+        if (Auth::check()) {
+            $user = Auth::user();
+            if ($user && method_exists($user, 'getApiToken')) {
+                $t = $user->getApiToken();
+                if (is_string($t) && $t !== '') {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Faire une requête GET à l'API avec authentification
      */
     protected function get(string $endpoint, array $query = []): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
-        if (!$token) {
+        if (! $token) {
+            $this->forgetTokenCache();
+            $token = $this->getAccessToken();
+        }
+
+        if (! $token) {
             Log::error('Impossible d\'obtenir le token d\'authentification');
             return [];
         }
 
         try {
-            $url = "{$this->baseUrl}/{$endpoint}";
-            
+            $url = rtrim($this->baseUrl, '/').'/'.ltrim($endpoint, '/');
+
             $response = $this->createHttpClient()
+                ->withToken($token)
                 ->withHeaders([
-                    'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json',
                 ])
                 ->get($url, $query);
 
-            // Si 401, le token est peut-être expiré, on réessaie une fois
+            // Si 401 : ne pas substituer le compte admin quand un JWT utilisateur était utilisé
             if ($response->status() === 401) {
+                if (! $this->shouldRefreshAdminTokenOn401()) {
+                    Log::error("Erreur API sur {$endpoint}", [
+                        'status' => $response->status(),
+                        'body' => $response->json(),
+                    ]);
+
+                    return [];
+                }
+
                 $this->forgetTokenCache();
                 $token = $this->getAccessToken();
 
                 if ($token) {
                     $response = $this->createHttpClient()
+                        ->withToken($token)
                         ->withHeaders([
-                            'Authorization' => "Bearer {$token}",
                             'Accept' => 'application/json',
                         ])
                         ->get($url, $query);
@@ -274,12 +362,9 @@ class DodoVroumApiService
                 return [];
             }
 
-            Log::warning('API DodoVroum GET error', [
-                'endpoint' => $endpoint,
-                'url' => $url,
+            Log::error("Erreur API sur {$endpoint}", [
                 'status' => $response->status(),
-                'body' => $response->body(),
-                'headers' => $response->headers(),
+                'body' => $response->json(),
             ]);
 
             return [];
@@ -298,7 +383,7 @@ class DodoVroumApiService
      */
     protected function post(string $endpoint, array $data = []): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             // Essayer une dernière fois en vidant le cache
@@ -317,32 +402,39 @@ class DodoVroumApiService
         }
 
         try {
-            $url = "{$this->baseUrl}/{$endpoint}";
-            
+            $url = rtrim($this->baseUrl, '/').'/'.ltrim($endpoint, '/');
+
             $response = $this->createHttpClient()
+                ->withToken($token)
                 ->withHeaders([
-                    'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json',
                 ])
-                ->asJson() // Force l'envoi en JSON avec Content-Type: application/json
+                ->asJson()
                 ->post($url, $data);
 
-            // Si 401, le token est peut-être expiré, on réessaie une fois
             if ($response->status() === 401) {
-                Log::warning('Token expiré, tentative de renouvellement', [
+                if (! $this->shouldRefreshAdminTokenOn401()) {
+                    Log::error("Erreur API sur {$endpoint}", [
+                        'status' => $response->status(),
+                        'body' => $response->json(),
+                    ]);
+                    throw new \Exception('Session API expirée ou non autorisée.');
+                }
+
+                Log::warning('Token admin expiré, tentative de renouvellement', [
                     'endpoint' => $endpoint,
                 ]);
-                
+
                 $this->forgetTokenCache();
                 $token = $this->getAccessToken();
 
                 if ($token) {
                     $response = $this->createHttpClient()
+                        ->withToken($token)
                         ->withHeaders([
-                            'Authorization' => "Bearer {$token}",
                             'Accept' => 'application/json',
                         ])
-                        ->asJson() // Force l'envoi en JSON avec Content-Type: application/json
+                        ->asJson()
                         ->post($url, $data);
                 } else {
                     Log::error('Impossible de renouveler le token après 401');
@@ -390,7 +482,7 @@ class DodoVroumApiService
      */
     protected function put(string $endpoint, array $data = []): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification');
@@ -398,24 +490,33 @@ class DodoVroumApiService
         }
 
         try {
-            $url = "{$this->baseUrl}/{$endpoint}";
-            
-            $response = Http::timeout(10)
+            $url = rtrim($this->baseUrl, '/').'/'.ltrim($endpoint, '/');
+
+            $response = $this->createHttpClient(10)
+                ->withToken($token)
                 ->withHeaders([
-                    'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ])
                 ->put($url, $data);
 
             if ($response->status() === 401) {
+                if (! $this->shouldRefreshAdminTokenOn401()) {
+                    Log::error("Erreur API sur {$endpoint}", [
+                        'status' => $response->status(),
+                        'body' => $response->json(),
+                    ]);
+
+                    return [];
+                }
+
                 $this->forgetTokenCache();
                 $token = $this->getAccessToken();
 
                 if ($token) {
-                    $response = Http::timeout(10)
+                    $response = $this->createHttpClient(10)
+                        ->withToken($token)
                         ->withHeaders([
-                            'Authorization' => "Bearer {$token}",
                             'Accept' => 'application/json',
                             'Content-Type' => 'application/json',
                         ])
@@ -428,7 +529,7 @@ class DodoVroumApiService
                 return $result['data'] ?? $result ?? [];
             }
 
-            Log::warning('API DodoVroum PUT error', [
+            Log::error("Erreur API sur {$endpoint}", [
                 'endpoint' => $endpoint,
                 'url' => $url,
                 'status' => $response->status(),
@@ -451,7 +552,7 @@ class DodoVroumApiService
      */
     protected function patch(string $endpoint, array $data = []): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification');
@@ -459,31 +560,39 @@ class DodoVroumApiService
         }
 
         try {
-            $url = "{$this->baseUrl}/{$endpoint}";
+            $url = rtrim($this->baseUrl, '/').'/'.ltrim($endpoint, '/');
 
             $response = $this->createHttpClient()
+                ->withToken($token)
                 ->withHeaders([
-                    'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json',
                 ])
-                ->asJson() // Force l'envoi en JSON avec Content-Type: application/json
+                ->asJson()
                 ->patch($url, $data);
 
             if ($response->status() === 401) {
-                Log::warning('Token expiré, tentative de renouvellement', [
+                if (! $this->shouldRefreshAdminTokenOn401()) {
+                    Log::error("Erreur API sur {$endpoint}", [
+                        'status' => $response->status(),
+                        'body' => $response->json(),
+                    ]);
+                    throw new \Exception('Session API expirée ou non autorisée.');
+                }
+
+                Log::warning('Token admin expiré, tentative de renouvellement', [
                     'endpoint' => $endpoint,
                 ]);
-                
+
                 $this->forgetTokenCache();
                 $token = $this->getAccessToken();
 
                 if ($token) {
                     $response = $this->createHttpClient()
+                        ->withToken($token)
                         ->withHeaders([
-                            'Authorization' => "Bearer {$token}",
                             'Accept' => 'application/json',
                         ])
-                        ->asJson() // Force l'envoi en JSON avec Content-Type: application/json
+                        ->asJson()
                         ->patch($url, $data);
                 } else {
                     Log::error('Impossible de renouveler le token après 401');
@@ -505,7 +614,7 @@ class DodoVroumApiService
                 $errorMessage = implode(', ', $errorMessage);
             }
 
-            Log::warning('API DodoVroum PATCH error', [
+            Log::error("Erreur API sur {$endpoint}", [
                 'endpoint' => $endpoint,
                 'url' => $url,
                 'status' => $response->status(),
@@ -533,7 +642,7 @@ class DodoVroumApiService
      */
     protected function delete(string $endpoint): bool
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification');
@@ -541,23 +650,32 @@ class DodoVroumApiService
         }
 
         try {
-            $url = "{$this->baseUrl}/{$endpoint}";
-            
-            $response = Http::timeout(10)
+            $url = rtrim($this->baseUrl, '/').'/'.ltrim($endpoint, '/');
+
+            $response = $this->createHttpClient(10)
+                ->withToken($token)
                 ->withHeaders([
-                    'Authorization' => "Bearer {$token}",
                     'Accept' => 'application/json',
                 ])
                 ->delete($url);
 
             if ($response->status() === 401) {
+                if (! $this->shouldRefreshAdminTokenOn401()) {
+                    Log::error("Erreur API sur {$endpoint}", [
+                        'status' => $response->status(),
+                        'body' => $response->json(),
+                    ]);
+
+                    return false;
+                }
+
                 $this->forgetTokenCache();
                 $token = $this->getAccessToken();
 
                 if ($token) {
-                    $response = Http::timeout(10)
+                    $response = $this->createHttpClient(10)
+                        ->withToken($token)
                         ->withHeaders([
-                            'Authorization' => "Bearer {$token}",
                             'Accept' => 'application/json',
                         ])
                         ->delete($url);
@@ -568,7 +686,7 @@ class DodoVroumApiService
                 return true;
             }
 
-            Log::warning('API DodoVroum DELETE error', [
+            Log::error("Erreur API sur {$endpoint}", [
                 'endpoint' => $endpoint,
                 'url' => $url,
                 'status' => $response->status(),
@@ -747,7 +865,7 @@ class DodoVroumApiService
      */
     public function approveBooking(string $id): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour approveBooking');
@@ -818,7 +936,7 @@ class DodoVroumApiService
      */
     public function rejectBooking(string $id, ?string $reason = null): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour rejectBooking');
@@ -892,7 +1010,7 @@ class DodoVroumApiService
      */
     public function confirmKeyRetrieval(string $id): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour confirmKeyRetrieval');
@@ -962,7 +1080,7 @@ class DodoVroumApiService
      */
     public function confirmOwnerKeyHandover(string $id): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour confirmOwnerKeyHandover');
@@ -1032,7 +1150,7 @@ class DodoVroumApiService
      */
     public function confirmCheckOut(string $id): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour confirmCheckOut');
@@ -1102,7 +1220,7 @@ class DodoVroumApiService
      */
     public function deleteBooking(string $id): array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour deleteBooking');
@@ -1260,7 +1378,7 @@ class DodoVroumApiService
      */
     public function getResidence(string $id): ?array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification');
@@ -1510,7 +1628,7 @@ class DodoVroumApiService
      */
     public function getVehicle(string $id): ?array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour getVehicle');
@@ -1740,7 +1858,7 @@ class DodoVroumApiService
     public function getComboOffer(string $id): ?array
     {
         try {
-            $token = $this->getAccessToken();
+            $token = $this->resolveRequestToken();
 
             if (!$token) {
                 Log::error('Impossible d\'obtenir le token d\'authentification pour getComboOffer');
@@ -1945,7 +2063,7 @@ class DodoVroumApiService
      */
     public function getUser(string $id): ?array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour getUser');
@@ -2061,7 +2179,7 @@ class DodoVroumApiService
     public function getVehicleTypes(): array
     {
         try {
-            $token = $this->getAccessToken();
+            $token = $this->resolveRequestToken();
 
             if (!$token) {
                 Log::error('Impossible d\'obtenir le token d\'authentification pour getVehicleTypes');
@@ -2189,7 +2307,7 @@ class DodoVroumApiService
      */
     public function getReview(string $id): ?array
     {
-        $token = $this->getAccessToken();
+        $token = $this->resolveRequestToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification pour getReview');

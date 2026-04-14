@@ -122,7 +122,7 @@ class ApiUserProvider implements UserProvider
         // S'assurer que le token est dans les données utilisateur
         // Si le token n'est pas dans userData, le récupérer depuis la session
         if (!isset($userData['token']) || empty($userData['token'])) {
-            $sessionToken = Session::get('api_token');
+            $sessionToken = Session::get('nest_jwt_token') ?? Session::get('api_token');
             if ($sessionToken) {
                 $userData['token'] = $sessionToken;
             }

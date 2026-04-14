@@ -145,8 +145,8 @@ class ApiUser implements Authenticatable
             return $this->attributes['token'];
         }
         
-        // Fallback: récupérer depuis la session
-        $sessionToken = \Illuminate\Support\Facades\Session::get('api_token');
+        $sessionToken = \Illuminate\Support\Facades\Session::get('nest_jwt_token')
+            ?? \Illuminate\Support\Facades\Session::get('api_token');
         if ($sessionToken) {
             return $sessionToken;
         }
