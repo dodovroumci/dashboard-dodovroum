@@ -659,7 +659,7 @@
 import { Link, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import AdminLayout from '../../Components/Layouts/AdminLayout.vue';
-import { getStorageImageUrl } from '../../utils/imageUrl';
+import { getStorageImageUrl, pickDisplayableImage } from '../../utils/imageUrl';
 import {
   ArrowLeft,
   Printer,
@@ -837,20 +837,22 @@ const handleImageError = (event: Event) => {
 
 const getVehicleImage = (): string | null => {
   if (!props.booking.vehicleDetails) return null;
-  const details = props.booking.vehicleDetails;
-  return details.image || details.photo || details.images?.[0] || null;
+  return pickDisplayableImage(props.booking.vehicleDetails as Record<string, unknown>, [
+    'images',
+    'photos',
+    'imageUrls',
+    'galerie',
+  ]);
 };
 
 const getResidenceImage = (): string | null => {
   if (!props.booking.residenceDetails) return null;
-  const details = props.booking.residenceDetails;
-  return details.image || details.photo || details.images?.[0] || details.photos?.[0] || null;
+  return pickDisplayableImage(props.booking.residenceDetails as Record<string, unknown>);
 };
 
 const getOfferImage = (): string | null => {
   if (!props.booking.offerDetails) return null;
-  const details = props.booking.offerDetails;
-  return details.image || details.photo || details.images?.[0] || null;
+  return pickDisplayableImage(props.booking.offerDetails as Record<string, unknown>);
 };
 
 const formatStatus = (status: string): string => {
