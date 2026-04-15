@@ -1004,27 +1004,53 @@ class AdminBookingController extends Controller
                 ]);
             }
 
-            // Récupérer les informations du propriétaire si on a seulement l'ownerId
+            // Propriétaire : l'API peut exposer ownerId, proprietaireId, ou l'ID via residence/vehicle
+            $resolvedOwnerId = BookingService::extractOwnerIdFromBooking($booking);
+
             $ownerName = $booking['ownerName'] ?? null;
             $ownerPhone = $booking['ownerPhone'] ?? null;
             $ownerAddress = $booking['ownerAddress'] ?? null;
-            
-            if (isset($booking['ownerId']) && empty($ownerName)) {
-                // Essayer de récupérer le propriétaire depuis l'API
+
+            // Enrichir depuis les objets imbriqués (souvent présents quand ownerId est absent au niveau racine)
+            foreach (['residence', 'vehicle', 'voiture', 'offer'] as $entityKey) {
+                if (! isset($booking[$entityKey]) || ! is_array($booking[$entityKey])) {
+                    continue;
+                }
+                $entity = $booking[$entityKey];
+                $proprietaire = $entity['proprietaire'] ?? $entity['owner'] ?? null;
+                if (! is_array($proprietaire)) {
+                    continue;
+                }
+                if (empty($ownerName)) {
+                    $firstName = $proprietaire['firstName'] ?? $proprietaire['prenom'] ?? '';
+                    $lastName = $proprietaire['lastName'] ?? $proprietaire['nom'] ?? $proprietaire['name'] ?? '';
+                    $ownerName = trim($firstName.' '.$lastName);
+                    if (empty($ownerName)) {
+                        $ownerName = $proprietaire['email'] ?? null;
+                    }
+                }
+                $ownerPhone = $ownerPhone ?? ($proprietaire['phone'] ?? $proprietaire['telephone'] ?? null);
+                $ownerAddress = $ownerAddress ?? ($proprietaire['address'] ?? $proprietaire['adresse'] ?? null);
+            }
+
+            if ($resolvedOwnerId && (empty($ownerName) || empty($ownerPhone))) {
                 try {
-                    $owner = $this->userService->find($booking['ownerId']);
+                    $owner = $this->userService->find($resolvedOwnerId);
                     if ($owner) {
-                        $firstName = $owner['firstName'] ?? $owner['prenom'] ?? '';
-                        $lastName = $owner['lastName'] ?? $owner['nom'] ?? $owner['name'] ?? '';
-                        $ownerName = trim($firstName . ' ' . $lastName);
                         if (empty($ownerName)) {
-                            $ownerName = $owner['email'] ?? null;
+                            $firstName = $owner['firstName'] ?? $owner['prenom'] ?? '';
+                            $lastName = $owner['lastName'] ?? $owner['nom'] ?? $owner['name'] ?? '';
+                            $ownerName = trim($firstName.' '.$lastName);
+                            if (empty($ownerName)) {
+                                $ownerName = $owner['email'] ?? null;
+                            }
                         }
                         $ownerPhone = $ownerPhone ?? ($owner['phone'] ?? $owner['telephone'] ?? null);
+                        $ownerAddress = $ownerAddress ?? ($owner['address'] ?? $owner['adresse'] ?? null);
                     }
                 } catch (\Exception $e) {
                     Log::warning('Impossible de récupérer le propriétaire', [
-                        'ownerId' => $booking['ownerId'],
+                        'resolvedOwnerId' => $resolvedOwnerId,
                         'error' => $e->getMessage(),
                     ]);
                 }
@@ -1266,7 +1292,7 @@ class AdminBookingController extends Controller
                 'keyRetrievedAt' => $booking['keyRetrievedAt'] ?? $booking['key_retrieved_at'] ?? null,
                 'ownerConfirmedAt' => $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null,
                 'checkOutAt' => $booking['checkOutAt'] ?? $booking['check_out_at'] ?? null,
-                'ownerId' => $booking['ownerId'] ?? null,
+                'ownerId' => $resolvedOwnerId ?? ($booking['ownerId'] ?? null),
                 'ownerName' => $ownerName,
                 'ownerPhone' => $ownerPhone,
                 'ownerAddress' => $ownerAddress,

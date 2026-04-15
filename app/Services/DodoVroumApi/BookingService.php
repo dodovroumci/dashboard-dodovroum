@@ -430,8 +430,9 @@ class BookingService extends BaseApiService
 
     /**
      * Extraire l'ID du propriétaire depuis une réservation
+     * (public pour réutilisation côté AdminBookingController, etc.)
      */
-    protected static function extractOwnerIdFromBooking(array $booking): ?string
+    public static function extractOwnerIdFromBooking(array $booking): ?string
     {
         // Essayer d'abord les champs directs
         if (isset($booking['ownerId']) && !empty($booking['ownerId'])) {
@@ -483,6 +484,21 @@ class BookingService extends BaseApiService
                 if (isset($proprietaire['id']) && !empty($proprietaire['id'])) {
                     return (string) $proprietaire['id'];
                 }
+            }
+        }
+
+        // Offre combinée
+        if (isset($booking['offer']) && is_array($booking['offer'])) {
+            $offer = $booking['offer'];
+            if (isset($offer['proprietaireId']) && !empty($offer['proprietaireId'])) {
+                return (string) $offer['proprietaireId'];
+            }
+            if (isset($offer['ownerId']) && !empty($offer['ownerId'])) {
+                return (string) $offer['ownerId'];
+            }
+            $proprietaire = $offer['proprietaire'] ?? $offer['owner'] ?? null;
+            if ($proprietaire && is_array($proprietaire) && isset($proprietaire['id']) && !empty($proprietaire['id'])) {
+                return (string) $proprietaire['id'];
             }
         }
 
