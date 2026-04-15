@@ -194,7 +194,7 @@
                 <div class="text-slate-900">
                   <span class="text-slate-500">Reste à payer :</span>
                   <span class="font-medium ml-1 text-emerald-600">
-                    {{ formatPrice((booking.totalPrice || 0) - (booking.downPayment || 0)) }} CFA
+                    {{ formatPrice(getRemainingToPay(booking)) }} CFA
                   </span>
                 </div>
               </div>
@@ -561,6 +561,31 @@ const formatStatus = (status: string): string => {
     'terminée': 'Terminée',
   };
   return statusMap[statusLower] || status;
+};
+
+const isPaidStatus = (status?: string): boolean => {
+  if (!status) return false;
+  const normalized = status.toLowerCase().trim();
+  return normalized === 'paid' || normalized === 'payé' || normalized === 'paye';
+};
+
+const getRemainingToPay = (booking: {
+  totalPrice: number;
+  downPayment?: number;
+  status: string;
+  isFullyPaid?: boolean;
+  remainingBalance?: number;
+}): number => {
+  // Le statut paid (ou full paid) doit toujours afficher 0 en UI.
+  if (booking.isFullyPaid || isPaidStatus(booking.status)) {
+    return 0;
+  }
+
+  if (typeof booking.remainingBalance === 'number') {
+    return Math.max(0, booking.remainingBalance);
+  }
+
+  return Math.max(0, (booking.totalPrice || 0) - (booking.downPayment || 0));
 };
 
 const isPending = (status: string): boolean => {
