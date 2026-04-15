@@ -219,7 +219,26 @@
               style="position: relative; overflow: visible !important;"
               @click.stop
             >
-              <div class="relative inline-block text-left">
+              <div class="flex items-center justify-end gap-2">
+                <button
+                  v-if="canConfirmBooking(booking)"
+                  type="button"
+                  @click.stop="approveBooking(booking.id)"
+                  class="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg font-medium transition-all shadow-sm"
+                >
+                  <CheckCircle class="w-4 h-4" />
+                  <span>Confirmer la réservation</span>
+                </button>
+
+                <div
+                  v-else-if="isConfirmedStatus(booking.status)"
+                  class="inline-flex items-center gap-2 text-emerald-700 font-semibold bg-emerald-50 px-3 py-2 rounded-full"
+                >
+                  <CheckCircle class="w-4 h-4" />
+                  <span>Confirmée</span>
+                </div>
+
+                <div class="relative inline-block text-left">
                 <button
                   :ref="el => setButtonRef(booking.id, el)"
                   type="button"
@@ -277,6 +296,7 @@
                   </div>
                 </div>
                 </Teleport>
+              </div>
               </div>
             </td>
           </tr>
