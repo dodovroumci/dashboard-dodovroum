@@ -60,6 +60,7 @@
         <select v-model="filters.status" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
           <option value="">Tous les statuts</option>
           <option value="pending">En attente</option>
+          <option value="paid">Payée (à confirmer)</option>
           <option value="confirmed">Confirmée</option>
           <option value="cancelled">Annulée</option>
           <option value="completed">Terminée</option>
@@ -681,6 +682,9 @@ const formatStatus = (status?: string): string => {
   if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
     return 'En attente de paiement';
   }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'Payée (à confirmer)';
+  }
   if (statusLower === 'pending' || statusLower === 'en_attente') {
     return 'En attente';
   } else if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
@@ -699,6 +703,9 @@ const getStatusClass = (status?: string): string => {
 
   if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
     return 'bg-orange-100 text-orange-900';
+  }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-100 text-emerald-800';
   }
   if (statusLower === 'pending' || statusLower === 'en_attente') {
     return 'bg-amber-100 text-amber-700';
