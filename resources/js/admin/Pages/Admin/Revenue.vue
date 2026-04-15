@@ -37,7 +37,7 @@
           </div>
           <div class="flex gap-2">
             <a
-              :href="route('admin.revenue.export')"
+              :href="exportCsvHref"
               class="px-4 py-2 text-xs font-bold bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors inline-flex items-center"
             >
               Export CSV
@@ -90,7 +90,6 @@
 </template>
 
 <script setup lang="ts">
-import { route } from 'ziggy-js';
 import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import StatCard from '../../Components/Owner/StatCard.vue';
@@ -130,6 +129,23 @@ watch(
 const currentTime = ref<string>(new Date().toLocaleTimeString());
 let timer: ReturnType<typeof setInterval> | undefined;
 let dataPollingTimer: ReturnType<typeof setInterval> | undefined;
+
+/** URL d’export : Ziggy expose `window.route` via @routes ; sinon URL statique (zéro risque). */
+const FALLBACK_ADMIN_EXPORT_CSV = '/admin/revenue/export.csv';
+const exportCsvHref = computed((): string => {
+  if (typeof window === 'undefined') {
+    return FALLBACK_ADMIN_EXPORT_CSV;
+  }
+  const routeFn = (window as Window & { route?: (name: string, ...args: unknown[]) => string }).route;
+  if (typeof routeFn === 'function') {
+    try {
+      return routeFn('admin.revenue.export');
+    } catch {
+      return FALLBACK_ADMIN_EXPORT_CSV;
+    }
+  }
+  return FALLBACK_ADMIN_EXPORT_CSV;
+});
 
 /** --- Logic --- */
 const stats = computed(() => ({
