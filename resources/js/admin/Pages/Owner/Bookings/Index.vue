@@ -294,7 +294,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { computed, reactive, ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { Teleport } from 'vue';
 import { Calendar, CheckCircle, DollarSign, TrendingUp, Building2, Truck, Package } from 'lucide-vue-next';
@@ -672,7 +672,7 @@ const displayedBookings = computed(() => {
   return props.bookings.filter((booking) => {
     return isCancelledOrFailedStatus(booking.status) || isExpiredPending(booking);
   });
-};
+});
 
 const formatStatus = (status?: string): string => {
   if (!status) return 'Inconnu';
