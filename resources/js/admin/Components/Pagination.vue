@@ -103,8 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 
 const props = defineProps<{
   pagination: {
@@ -121,15 +120,21 @@ const props = defineProps<{
 
 const getPageUrl = (page: number): string => {
   const params = new URLSearchParams();
-  params.set('page', page.toString());
   
   if (props.filters) {
     Object.entries(props.filters).forEach(([key, value]) => {
+      if (key === 'page') {
+        return;
+      }
       if (value !== null && value !== undefined && value !== '') {
         params.set(key, String(value));
       }
     });
   }
+
+  // Toujours fixer la page en dernier pour eviter
+  // qu'un filtre `page=1` n'ecrase la navigation.
+  params.set('page', page.toString());
   
   const route = (name: string): string => {
     const routes: Record<string, string> = {
