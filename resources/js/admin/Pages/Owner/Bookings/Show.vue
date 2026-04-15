@@ -13,6 +13,15 @@
       </div>
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <button
+          type="button"
+          @click="handleConfirmBooking"
+          :disabled="!canConfirmBooking"
+          class="px-4 py-2.5 sm:py-2 min-h-[44px] rounded-lg transition-colors font-medium text-sm"
+          :class="canConfirmBooking ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-300 text-slate-600 cursor-not-allowed'"
+        >
+          {{ isPaidStatus(booking.status) ? 'Confirmer la réservation' : 'En attente de paiement' }}
+        </button>
+        <button
           @click="window.print()"
           class="min-h-[44px] min-w-[44px] p-2 hover:bg-slate-100 rounded-lg transition-colors flex items-center justify-center touch-manipulation"
           title="Imprimer"
@@ -708,6 +717,7 @@ const route = (name: string, params?: any): string => {
   const routes: Record<string, any> = {
     'owner.bookings.index': '/owner/bookings',
     'owner.bookings.show': (id: string) => `/owner/bookings/${id}`,
+    'owner.bookings.approve': (id: string) => `/owner/bookings/${id}/approve`,
     'owner.bookings.confirm-checkout': (id: string) => `/owner/bookings/${id}/confirm-checkout`,
   };
 
@@ -715,6 +725,23 @@ const route = (name: string, params?: any): string => {
     return routes[name](params ?? props.booking.id);
   }
   return routes[name] || '#';
+};
+
+const isPaidStatus = (status?: string | null): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase().trim();
+  return statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye';
+};
+
+const canConfirmBooking = computed(() => {
+  return isPaidStatus(props.booking.status) && !props.booking.ownerConfirmedAt;
+});
+
+const handleConfirmBooking = () => {
+  if (!canConfirmBooking.value) return;
+  router.patch(route('owner.bookings.approve'), {}, {
+    preserveScroll: true,
+  });
 };
 
 const canShowManualCheckOut = computed(() => {

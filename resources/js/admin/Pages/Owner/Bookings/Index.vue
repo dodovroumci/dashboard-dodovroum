@@ -209,9 +209,13 @@
                       <div class="border-t border-slate-200 my-1"></div>
                       <button
                         @click="approveBooking(booking.id)"
-                        class="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors font-medium"
+                        :disabled="!canConfirmBooking(booking)"
+                        class="w-full text-left px-4 py-2 text-sm transition-colors font-medium"
+                        :class="canConfirmBooking(booking)
+                          ? 'text-emerald-600 hover:bg-emerald-50'
+                          : 'text-slate-400 bg-slate-100 cursor-not-allowed'"
                       >
-                        ✅ Approuver
+                        {{ isPaidStatus(booking.status) ? '✅ Confirmer la réservation' : '💳 En attente de paiement' }}
                       </button>
                       <button
                         @click="rejectBooking(booking.id)"
@@ -270,6 +274,7 @@ const props = defineProps<{
     totalPrice?: number;
     total?: number;
     status: string;
+    ownerConfirmedAt?: string | null;
   }>;
   filters?: {
     search?: string;
@@ -417,8 +422,13 @@ const goToBooking = (id: string | number) => {
 };
 
 const approveBooking = (id: string | number) => {
+  const booking = props.bookings.find((item) => item.id === id);
+  if (!booking || !canConfirmBooking(booking)) {
+    return;
+  }
+
   closeActionMenu();
-  if (confirm('Es-tu sûr de vouloir approuver cette réservation ?')) {
+  if (confirm('Es-tu sûr de vouloir confirmer cette réservation ?')) {
     router.patch(route('owner.bookings.approve', id), {}, {
       preserveScroll: true,
       preserveState: false, // Forcer le rechargement pour voir le nouveau statut
@@ -510,6 +520,16 @@ const canApproveOrReject = (status: string): boolean => {
   
   // Si le statut est l'un des statuts finaux, on ne peut plus approuver/rejeter
   return !finalStatuses.includes(statusLower);
+};
+
+const isPaidStatus = (status?: string): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase().trim();
+  return statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye';
+};
+
+const canConfirmBooking = (booking: { status?: string; ownerConfirmedAt?: string | null }): boolean => {
+  return isPaidStatus(booking.status) && !booking.ownerConfirmedAt;
 };
 
 const formatStatus = (status?: string): string => {
