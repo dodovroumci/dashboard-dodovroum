@@ -130,7 +130,7 @@ const currentTime = ref<string>(new Date().toLocaleTimeString());
 let timer: ReturnType<typeof setInterval> | undefined;
 let dataPollingTimer: ReturnType<typeof setInterval> | undefined;
 
-/** URL d’export : Ziggy expose `window.route` via @routes ; sinon URL statique (zéro risque). */
+/** URL d’export : `window.route` si présent (ex. Ziggy chargé ailleurs) ; sinon URL Laravel connue. */
 const FALLBACK_ADMIN_EXPORT_CSV = '/admin/revenue/export.csv';
 const exportCsvHref = computed((): string => {
   if (typeof window === 'undefined') {
