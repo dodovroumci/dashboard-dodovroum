@@ -84,7 +84,31 @@
 
     <!-- Tableau des réservations -->
     <div class="bg-white border border-slate-200 rounded-xl overflow-x-auto">
-      <div v-if="bookings.length === 0" class="p-12 text-center">
+      <div class="px-6 pt-5 pb-2 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            @click="activeTab = 'active'"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+            :class="activeTab === 'active' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            Actives (PAID + CONFIRMED)
+          </button>
+          <button
+            type="button"
+            @click="activeTab = 'archives'"
+            class="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+            :class="activeTab === 'archives' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'"
+          >
+            Archives / Echecs
+          </button>
+        </div>
+        <p class="text-xs text-slate-500">
+          Rafraichissement automatique toutes les 60s
+        </p>
+      </div>
+
+      <div v-if="displayedBookings.length === 0" class="p-12 text-center">
         <p class="text-slate-500">Aucune réservation trouvée</p>
       </div>
 
@@ -113,7 +137,7 @@
         </thead>
         <tbody class="divide-y divide-slate-200">
           <tr
-            v-for="booking in bookings"
+            v-for="booking in displayedBookings"
             :key="booking.id"
             class="hover:bg-slate-50 cursor-pointer transition-colors active:bg-slate-100 min-h-[48px]"
             role="button"
@@ -169,6 +193,25 @@
               >
                 {{ formatStatus(booking.status) }}
               </span>
+              <div v-if="isPendingStatus(booking.status)" class="mt-2 space-y-1">
+                <div
+                  v-if="isExpiredPending(booking)"
+                  class="text-xs font-semibold text-red-600"
+                >
+                  ⚠️ Lien expiré (5min dépassées)
+                </div>
+                <template v-else>
+                  <div class="text-xs font-medium text-amber-600">
+                    Expire dans {{ formatCountdown(getPendingRemainingMs(booking)) }}
+                  </div>
+                  <div class="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      class="h-full bg-amber-500 transition-all duration-1000"
+                      :style="{ width: `${getPendingProgressPercent(booking)}%` }"
+                    ></div>
+                  </div>
+                </template>
+              </div>
             </td>
             <td
               class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
@@ -207,6 +250,12 @@
                     <!-- Actions d'approbation/rejet (si pas confirmée/annulée/terminée) -->
                     <template v-if="canApproveOrReject(booking.status)">
                       <div class="border-t border-slate-200 my-1"></div>
+                      <div
+                        v-if="isPendingStatus(booking.status) && isExpiredPending(booking)"
+                        class="px-4 py-2 text-xs font-semibold text-red-600 bg-red-50"
+                      >
+                        ⚠️ Lien expiré (5min dépassées)
+                      </div>
                       <button
                         @click="approveBooking(booking.id)"
                         :disabled="!canConfirmBooking(booking)"
@@ -271,6 +320,7 @@ const props = defineProps<{
     dates?: string;
     startDate?: string;
     endDate?: string;
+    createdAt?: string;
     totalPrice?: number;
     total?: number;
     status: string;
@@ -300,6 +350,10 @@ const props = defineProps<{
 }>();
 
 const error = props.error || '';
+const activeTab = ref<'active' | 'archives'>('active');
+const now = ref(Date.now());
+let clockInterval: ReturnType<typeof setInterval> | null = null;
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
 
 // Gestion des images
 const imageErrors = ref<Record<string | number, boolean>>({});
@@ -396,10 +450,26 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+
+  // Horloge locale pour rendre le badge chrono en temps reel.
+  clockInterval = setInterval(() => {
+    now.value = Date.now();
+  }, 1000);
+
+  // Auto-refresh pour retirer les reservations annulees cote serveur.
+  refreshInterval = setInterval(() => {
+    router.reload({
+      preserveScroll: true,
+      preserveState: true,
+      only: ['bookings', 'pagination', 'stats'],
+    });
+  }, 60000);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  if (clockInterval) clearInterval(clockInterval);
+  if (refreshInterval) clearInterval(refreshInterval);
 });
 
 // Fonctions d'approbation et de rejet
@@ -528,8 +598,80 @@ const isPaidStatus = (status?: string): boolean => {
   return statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye';
 };
 
-const canConfirmBooking = (booking: { status?: string; ownerConfirmedAt?: string | null }): boolean => {
-  return isPaidStatus(booking.status) && !booking.ownerConfirmedAt;
+const isPendingStatus = (status?: string): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase().trim();
+  return statusLower === 'pending' || statusLower === 'en attente' || statusLower === 'en_attente';
+};
+
+const isConfirmedStatus = (status?: string): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase().trim();
+  return statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée';
+};
+
+const isCancelledOrFailedStatus = (status?: string): boolean => {
+  if (!status) return false;
+  const statusLower = status.toLowerCase().trim();
+  return [
+    'cancelled',
+    'canceled',
+    'annulee',
+    'annulée',
+    'failed',
+    'echec',
+    'échoué',
+    'expired',
+  ].includes(statusLower);
+};
+
+const getPendingAgeMs = (booking: { createdAt?: string }): number => {
+  if (!booking.createdAt) return 0;
+  const createdAtMs = new Date(booking.createdAt).getTime();
+  if (Number.isNaN(createdAtMs)) return 0;
+  return Math.max(0, now.value - createdAtMs);
+};
+
+const isExpiredPending = (booking: { status?: string; createdAt?: string }): boolean => {
+  if (!isPendingStatus(booking.status)) return false;
+  return getPendingAgeMs(booking) > 5 * 60 * 1000;
+};
+
+const getPendingRemainingMs = (booking: { status?: string; createdAt?: string }): number => {
+  const maxMs = 5 * 60 * 1000;
+  if (!isPendingStatus(booking.status)) return maxMs;
+  return Math.max(0, maxMs - getPendingAgeMs(booking));
+};
+
+const getPendingProgressPercent = (booking: { status?: string; createdAt?: string }): number => {
+  const maxMs = 5 * 60 * 1000;
+  const remaining = getPendingRemainingMs(booking);
+  return Math.max(0, Math.min(100, (remaining / maxMs) * 100));
+};
+
+const formatCountdown = (ms: number): string => {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+const canConfirmBooking = (booking: { status?: string; ownerConfirmedAt?: string | null; createdAt?: string }): boolean => {
+  if (booking.ownerConfirmedAt) return false;
+  if (isExpiredPending(booking)) return false;
+  return isPaidStatus(booking.status);
+};
+
+const displayedBookings = computed(() => {
+  if (activeTab.value === 'active') {
+    // Filtre par defaut: dossiers actionnables (PAID) + deja traites (CONFIRMED).
+    return props.bookings.filter((booking) => isPaidStatus(booking.status) || isConfirmedStatus(booking.status));
+  }
+
+  // Archives/echouees : annulees, echecs et pending expirées.
+  return props.bookings.filter((booking) => {
+    return isCancelledOrFailedStatus(booking.status) || isExpiredPending(booking);
+  });
 };
 
 const formatStatus = (status?: string): string => {
