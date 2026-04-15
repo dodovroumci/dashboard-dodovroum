@@ -188,13 +188,32 @@
                 <div class="text-slate-900">
                   <span class="text-slate-500">Acompte versé :</span>
                   <span class="font-medium ml-1">
-                    {{ booking.downPayment && booking.downPayment > 0 ? formatPrice(booking.downPayment) + ' CFA' : '0 CFA' }}
+                    {{ formatPrice(getCollectedPaid(booking)) }} CFA
                   </span>
                 </div>
                 <div class="text-slate-900">
                   <span class="text-slate-500">Reste à payer :</span>
                   <span class="font-medium ml-1 text-emerald-600">
                     {{ formatPrice(getRemainingToPay(booking)) }} CFA
+                  </span>
+                </div>
+                <div v-if="getCollectedPaid(booking) > 0" class="pt-1">
+                  <div class="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      class="h-full transition-all duration-300"
+                      :class="isBookingSettled(booking) ? 'bg-emerald-500' : 'bg-indigo-500'"
+                      :style="{ width: `${getPaymentProgressPercent(booking)}%` }"
+                    ></div>
+                  </div>
+                </div>
+                <div v-if="isBookingSettled(booking)" class="pt-1">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
+                    Soldé
+                  </span>
+                </div>
+                <div v-else-if="getCollectedPaid(booking) > 0" class="pt-1">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
+                    Acompte versé : {{ formatPrice(getCollectedPaid(booking)) }} CFA
                   </span>
                 </div>
               </div>
@@ -569,9 +588,23 @@ const isPaidStatus = (status?: string): boolean => {
   return normalized === 'paid' || normalized === 'payé' || normalized === 'paye';
 };
 
+const getCollectedPaid = (booking: {
+  totalPaid?: number;
+  downPayment?: number;
+}): number => {
+  if (typeof booking.totalPaid === 'number') {
+    return Math.max(0, booking.totalPaid);
+  }
+  if (typeof booking.downPayment === 'number') {
+    return Math.max(0, booking.downPayment);
+  }
+  return 0;
+};
+
 const getRemainingToPay = (booking: {
   totalPrice: number;
   downPayment?: number;
+  totalPaid?: number;
   status: string;
   isFullyPaid?: boolean;
   remainingBalance?: number;
@@ -585,7 +618,33 @@ const getRemainingToPay = (booking: {
     return Math.max(0, booking.remainingBalance);
   }
 
-  return Math.max(0, (booking.totalPrice || 0) - (booking.downPayment || 0));
+  // Fallback: total - paiements encaissés.
+  return Math.max(0, (booking.totalPrice || 0) - getCollectedPaid(booking));
+};
+
+const isBookingSettled = (booking: {
+  totalPrice: number;
+  downPayment?: number;
+  totalPaid?: number;
+  status: string;
+  isFullyPaid?: boolean;
+  remainingBalance?: number;
+}): boolean => {
+  return getRemainingToPay(booking) <= 0;
+};
+
+const getPaymentProgressPercent = (booking: {
+  totalPrice: number;
+  downPayment?: number;
+  totalPaid?: number;
+  status: string;
+  isFullyPaid?: boolean;
+  remainingBalance?: number;
+}): number => {
+  const total = Math.max(0, booking.totalPrice || 0);
+  if (total <= 0) return 0;
+  const paid = Math.max(0, total - getRemainingToPay(booking));
+  return Math.max(0, Math.min(100, (paid / total) * 100));
 };
 
 const isPending = (status: string): boolean => {

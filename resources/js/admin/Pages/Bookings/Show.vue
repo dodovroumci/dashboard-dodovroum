@@ -322,9 +322,9 @@
               <dt class="text-xs font-semibold text-white/80 uppercase tracking-wide mb-2">MONTANT PAYÉ</dt>
               <dd class="text-lg font-bold">{{ formatPrice(booking.totalPaid) }} CFA</dd>
             </div>
-            <div v-if="booking.remainingBalance !== undefined && booking.remainingBalance > 0" class="p-4 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
+            <div v-if="displayedRemainingBalance > 0" class="p-4 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 text-white border-0 shadow-lg">
               <dt class="text-xs font-semibold text-white/80 uppercase tracking-wide mb-2">SOLDE RESTANT</dt>
-              <dd class="text-lg font-bold">{{ formatPrice(booking.remainingBalance) }} CFA</dd>
+              <dd class="text-lg font-bold">{{ formatPrice(displayedRemainingBalance) }} CFA</dd>
             </div>
           </dl>
         </div>
@@ -337,7 +337,7 @@
               <h3 class="text-lg font-semibold text-slate-900">Suivi des Paiements</h3>
             </div>
             <button
-              v-if="!booking.isFullyPaid"
+              v-if="!isBookingPaid"
               @click="showMarkAsPaidModal = true"
               class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-medium"
             >
@@ -402,14 +402,14 @@
                 <div class="text-slate-500">Total payé</div>
                 <div class="font-semibold text-emerald-600">{{ formatPrice(booking.totalPaid || 0) }} CFA</div>
               </div>
-              <div v-if="booking.remainingBalance !== undefined && booking.remainingBalance > 0">
+              <div v-if="displayedRemainingBalance > 0">
                 <div class="text-slate-500">Solde restant</div>
-                <div class="font-semibold text-amber-600">{{ formatPrice(booking.remainingBalance) }} CFA</div>
+                <div class="font-semibold text-amber-600">{{ formatPrice(displayedRemainingBalance) }} CFA</div>
               </div>
               <div>
                 <div class="text-slate-500">Statut</div>
-                <div class="font-semibold" :class="booking.isFullyPaid ? 'text-emerald-600' : 'text-amber-600'">
-                  {{ booking.isFullyPaid ? 'Entièrement payé' : 'En attente de paiement' }}
+                <div class="font-semibold" :class="isBookingPaid ? 'text-emerald-600' : 'text-amber-600'">
+                  {{ isBookingPaid ? 'Entièrement payé' : 'En attente de paiement' }}
                 </div>
               </div>
             </div>
@@ -855,6 +855,9 @@ const formatStatus = (status: string): string => {
   const statusMap: Record<string, string> = {
     awaiting_payment: 'En attente de paiement',
     awaitingpayment: 'En attente de paiement',
+    paid: 'Payée',
+    payé: 'Payée',
+    paye: 'Payée',
     pending: 'En attente',
     'en attente': 'En attente',
     confirmed: 'Confirmée',
@@ -875,6 +878,9 @@ const getStatusClass = (status: string): string => {
   if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
     return 'bg-orange-100 text-orange-900';
   }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-100 text-emerald-800';
+  }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-100 text-emerald-800';
   } else if (statusLower === 'pending' || statusLower === 'en attente') {
@@ -891,6 +897,9 @@ const getStatusBadgeClass = (status: string): string => {
   const statusLower = status.toLowerCase();
   if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
     return 'bg-orange-500 text-white';
+  }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-500 text-white';
   }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-500 text-white';
@@ -1016,6 +1025,15 @@ const isPaidStatus = (status?: string | null): boolean => {
   return statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye';
 };
 
+const isBookingPaid = computed(() => {
+  return Boolean(props.booking.isFullyPaid) || isPaidStatus(props.booking.status);
+});
+
+const displayedRemainingBalance = computed(() => {
+  if (isBookingPaid.value) return 0;
+  return Math.max(0, props.booking.remainingBalance ?? 0);
+});
+
 const canConfirmBooking = computed(() => {
   return isPaidStatus(props.booking.status) && !props.booking.ownerConfirmedAt;
 });
@@ -1060,27 +1078,31 @@ const handleCancel = () => {
   }
 };
 
-const handleMarkAsPaid = async () => {
+const handleMarkAsPaid = () => {
   markingAsPaid.value = true;
-  try {
-    await router.patch(route('admin.bookings.mark-as-paid', props.booking.id), {
-      amount: markAsPaidForm.value.amount || props.booking.totalPrice,
-      paymentMethod: markAsPaidForm.value.paymentMethod,
-      transactionId: markAsPaidForm.value.transactionId || undefined,
-      notes: markAsPaidForm.value.notes || undefined,
-    });
-    showMarkAsPaidModal.value = false;
-    markAsPaidForm.value = {
-      amount: null,
-      paymentMethod: 'manual',
-      transactionId: '',
-      notes: '',
-    };
-  } catch (error) {
-    console.error('Erreur lors du marquage comme payé:', error);
-  } finally {
-    markingAsPaid.value = false;
-  }
+  router.patch(route('admin.bookings.mark-as-paid', props.booking.id), {
+    amount: markAsPaidForm.value.amount || props.booking.totalPrice,
+    paymentMethod: markAsPaidForm.value.paymentMethod,
+    transactionId: markAsPaidForm.value.transactionId || undefined,
+    notes: markAsPaidForm.value.notes || undefined,
+  }, {
+    preserveScroll: true,
+    onSuccess: () => {
+      showMarkAsPaidModal.value = false;
+      markAsPaidForm.value = {
+        amount: null,
+        paymentMethod: 'manual',
+        transactionId: '',
+        notes: '',
+      };
+    },
+    onError: (errors) => {
+      console.error('Erreur lors du marquage comme payé:', errors);
+    },
+    onFinish: () => {
+      markingAsPaid.value = false;
+    },
+  });
 };
 
 const formatPaymentStatus = (status: string): string => {
