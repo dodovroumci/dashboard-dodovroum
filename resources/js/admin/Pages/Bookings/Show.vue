@@ -270,6 +270,126 @@
             </div>
           </div>
         </div>
+
+        <!-- Bien réservé (résidence / véhicule / offre) — sous la carte Propriétaire -->
+        <div
+          v-if="booking.vehicleName || (booking.propertyName && booking.propertyName !== 'Propriété inconnue') || booking.offerName"
+          class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300"
+        >
+          <!-- Véhicule -->
+          <div v-if="booking.vehicleName || booking.vehicleDetails">
+            <div class="flex items-center gap-2 mb-4">
+              <Truck class="w-5 h-5" style="color: rgb(26, 51, 101);" />
+              <h3 class="text-lg font-semibold text-slate-900">Véhicule Réservé</h3>
+            </div>
+            <div v-if="getVehicleImage()" class="mb-4">
+              <img
+                :src="getStorageImageUrl(getVehicleImage(), 'vehicles')"
+                :alt="booking.vehicleName || ''"
+                class="w-full h-48 object-cover rounded-lg"
+                @error="handleImageError"
+              />
+            </div>
+            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Truck class="w-16 h-16 text-slate-400" />
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-semibold text-slate-900">{{ booking.vehicleName }}</h4>
+              <div v-if="booking.vehicleDetails" class="space-y-1 text-sm text-slate-600">
+                <div v-if="booking.vehicleDetails.type || booking.vehicleDetails.categorie">
+                  {{ booking.vehicleDetails.type || booking.vehicleDetails.categorie }}
+                  <span v-if="booking.vehicleDetails.transmission"> - {{ booking.vehicleDetails.transmission }}</span>
+                </div>
+                <div v-if="booking.vehicleDetails.adresse || booking.vehicleDetails.location" class="flex items-center gap-1">
+                  <MapPin class="w-4 h-4" />
+                  {{ booking.vehicleDetails.adresse || booking.vehicleDetails.location }}
+                </div>
+                <div v-if="booking.vehicleDetails.plaque || booking.vehicleDetails.licensePlate" class="flex items-center gap-1">
+                  <span class="text-xs">Plaque:</span>
+                  {{ booking.vehicleDetails.plaque || booking.vehicleDetails.licensePlate }}
+                </div>
+              </div>
+              <button
+                v-if="booking.vehicleId"
+                @click="viewVehicle(booking.vehicleId)"
+                class="mt-3 px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium hover:opacity-90"
+                style="background: rgb(26, 51, 101);"
+              >
+                Voir la fiche
+              </button>
+            </div>
+          </div>
+
+          <!-- Résidence -->
+          <div v-else-if="booking.propertyName && booking.propertyName !== 'Propriété inconnue'">
+            <div class="flex items-center gap-2 mb-4">
+              <Building2 class="w-5 h-5" style="color: rgb(26, 51, 101);" />
+              <h3 class="text-lg font-semibold text-slate-900">Résidence Réservée</h3>
+            </div>
+            <div v-if="getResidenceImage()" class="mb-4">
+              <img
+                :src="getStorageImageUrl(getResidenceImage(), 'residences')"
+                :alt="booking.propertyName"
+                class="w-full h-48 object-cover rounded-lg"
+                @error="handleImageError"
+              />
+            </div>
+            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Building2 class="w-16 h-16 text-slate-400" />
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-semibold text-slate-900">{{ booking.propertyName }}</h4>
+              <div v-if="booking.residenceDetails" class="space-y-1 text-sm text-slate-600">
+                <div v-if="booking.residenceDetails.ville" class="flex items-center gap-1">
+                  <MapPin class="w-4 h-4" />
+                  {{ booking.residenceDetails.ville }}
+                  <span v-if="booking.residenceDetails.adresse">, {{ booking.residenceDetails.adresse }}</span>
+                </div>
+                <div v-if="booking.residenceDetails.capacite">
+                  Capacité: {{ booking.residenceDetails.capacite }} personnes
+                </div>
+              </div>
+              <button
+                v-if="booking.residenceId"
+                @click="viewResidence(booking.residenceId)"
+                class="mt-3 px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium hover:opacity-90"
+                style="background: rgb(26, 51, 101);"
+              >
+                Voir la fiche
+              </button>
+            </div>
+          </div>
+
+          <!-- Offre Combinée -->
+          <div v-else-if="booking.offerName">
+            <div class="flex items-center gap-2 mb-4">
+              <Package class="w-5 h-5" style="color: rgb(26, 51, 101);" />
+              <h3 class="text-lg font-semibold text-slate-900">Offre Combinée Réservée</h3>
+            </div>
+            <div v-if="getOfferImage()" class="mb-4">
+              <img
+                :src="getStorageImageUrl(getOfferImage(), 'offers')"
+                :alt="booking.offerName"
+                class="w-full h-48 object-cover rounded-lg"
+                @error="handleImageError"
+              />
+            </div>
+            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Package class="w-16 h-16 text-slate-400" />
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-semibold text-slate-900">{{ booking.offerName }}</h4>
+              <div v-if="booking.offerDetails" class="space-y-1 text-sm text-slate-600">
+                <div v-if="booking.offerDetails.description">
+                  {{ booking.offerDetails.description }}
+                </div>
+                <div v-if="booking.offerDetails.prixPack">
+                  Prix pack: {{ formatPrice(booking.offerDetails.prixPack) }} CFA
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Colonne droite : LA RÉSERVATION -->
@@ -493,125 +613,8 @@
             </form>
           </div>
         </div>
-
-        <!-- Bien Réservé (Véhicule, Résidence ou Offre) -->
-        <div v-if="booking.vehicleName || (booking.propertyName && booking.propertyName !== 'Propriété inconnue') || booking.offerName" class="bg-white border border-slate-200 rounded-xl p-6">
-          <!-- Véhicule -->
-          <div v-if="booking.vehicleName || booking.vehicleDetails">
-            <div class="flex items-center gap-2 mb-4">
-              <Truck class="w-5 h-5" style="color: rgb(26, 51, 101);" />
-              <h3 class="text-lg font-semibold text-slate-900">Véhicule Réservé</h3>
-                </div>
-            <div v-if="getVehicleImage()" class="mb-4">
-              <img
-                :src="getStorageImageUrl(getVehicleImage(), 'vehicles')"
-                :alt="booking.vehicleName"
-                class="w-full h-48 object-cover rounded-lg"
-                @error="handleImageError"
-              />
-                </div>
-            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
-              <Truck class="w-16 h-16 text-slate-400" />
-                </div>
-            <div class="space-y-2">
-              <h4 class="font-semibold text-slate-900">{{ booking.vehicleName }}</h4>
-              <div v-if="booking.vehicleDetails" class="space-y-1 text-sm text-slate-600">
-                <div v-if="booking.vehicleDetails.type || booking.vehicleDetails.categorie">
-                  {{ booking.vehicleDetails.type || booking.vehicleDetails.categorie }}
-                  <span v-if="booking.vehicleDetails.transmission"> - {{ booking.vehicleDetails.transmission }}</span>
-                </div>
-                <div v-if="booking.vehicleDetails.adresse || booking.vehicleDetails.location" class="flex items-center gap-1">
-                  <MapPin class="w-4 h-4" />
-                  {{ booking.vehicleDetails.adresse || booking.vehicleDetails.location }}
-            </div>
-                <div v-if="booking.vehicleDetails.plaque || booking.vehicleDetails.licensePlate" class="flex items-center gap-1">
-                  <span class="text-xs">Plaque:</span>
-                  {{ booking.vehicleDetails.plaque || booking.vehicleDetails.licensePlate }}
-                </div>
-                </div>
-              <button
-                v-if="booking.vehicleId"
-                @click="viewVehicle(booking.vehicleId)"
-                class="mt-3 px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium hover:opacity-90"
-                style="background: rgb(26, 51, 101);"
-              >
-                Voir la fiche
-              </button>
-            </div>
-        </div>
-
-          <!-- Résidence -->
-          <div v-else-if="booking.propertyName && booking.propertyName !== 'Propriété inconnue'">
-            <div class="flex items-center gap-2 mb-4">
-              <Building2 class="w-5 h-5" style="color: rgb(26, 51, 101);" />
-              <h3 class="text-lg font-semibold text-slate-900">Résidence Réservée</h3>
-            </div>
-            <div v-if="getResidenceImage()" class="mb-4">
-              <img
-                :src="getStorageImageUrl(getResidenceImage(), 'residences')"
-                :alt="booking.propertyName"
-                class="w-full h-48 object-cover rounded-lg"
-                @error="handleImageError"
-              />
-            </div>
-            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
-              <Building2 class="w-16 h-16 text-slate-400" />
-            </div>
-            <div class="space-y-2">
-              <h4 class="font-semibold text-slate-900">{{ booking.propertyName }}</h4>
-              <div v-if="booking.residenceDetails" class="space-y-1 text-sm text-slate-600">
-                <div v-if="booking.residenceDetails.ville" class="flex items-center gap-1">
-                  <MapPin class="w-4 h-4" />
-                  {{ booking.residenceDetails.ville }}
-                  <span v-if="booking.residenceDetails.adresse">, {{ booking.residenceDetails.adresse }}</span>
-            </div>
-                <div v-if="booking.residenceDetails.capacite">
-                  Capacité: {{ booking.residenceDetails.capacite }} personnes
-            </div>
-        </div>
-              <button
-                v-if="booking.residenceId"
-                @click="viewResidence(booking.residenceId)"
-                class="mt-3 px-4 py-2 text-white rounded-lg transition-colors text-sm font-medium hover:opacity-90"
-                style="background: rgb(26, 51, 101);"
-              >
-                Voir la fiche
-              </button>
-                  </div>
-                </div>
-
-          <!-- Offre Combinée -->
-          <div v-else-if="booking.offerName">
-            <div class="flex items-center gap-2 mb-4">
-              <Package class="w-5 h-5" style="color: rgb(26, 51, 101);" />
-              <h3 class="text-lg font-semibold text-slate-900">Offre Combinée Réservée</h3>
-            </div>
-            <div v-if="getOfferImage()" class="mb-4">
-              <img
-                :src="getStorageImageUrl(getOfferImage(), 'offers')"
-                :alt="booking.offerName"
-                class="w-full h-48 object-cover rounded-lg"
-                @error="handleImageError"
-              />
-                </div>
-            <div v-else class="mb-4 w-full h-48 bg-slate-100 rounded-lg flex items-center justify-center">
-              <Package class="w-16 h-16 text-slate-400" />
-              </div>
-            <div class="space-y-2">
-              <h4 class="font-semibold text-slate-900">{{ booking.offerName }}</h4>
-              <div v-if="booking.offerDetails" class="space-y-1 text-sm text-slate-600">
-                <div v-if="booking.offerDetails.description">
-                  {{ booking.offerDetails.description }}
-              </div>
-                <div v-if="booking.offerDetails.prixPack">
-                  Prix pack: {{ formatPrice(booking.offerDetails.prixPack) }} CFA
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        </div>
       </div>
+    </div>
 
     <!-- Informations techniques (collapsible) -->
     <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
