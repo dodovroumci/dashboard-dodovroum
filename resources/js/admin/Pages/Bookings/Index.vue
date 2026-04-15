@@ -309,14 +309,10 @@
 
     <!-- Pagination -->
     <Pagination
-      v-if="pagination.total > 0"
-      :current-page="pagination.current_page"
-      :last-page="pagination.last_page"
-      :per-page="pagination.per_page"
-      :total="pagination.total"
-      :from="pagination.from"
-      :to="pagination.to"
-      @page-change="handlePageChange"
+      v-if="pagination && pagination.total > 0"
+      :pagination="pagination"
+      route-name="admin.bookings.index"
+      :filters="filters"
     />
   </div>
 </template>
@@ -514,16 +510,6 @@ const resetFilters = () => {
   filters.startDate = '';
   filters.endDate = '';
   applyFilters();
-};
-
-const handlePageChange = (page: number) => {
-  router.get('/admin/bookings', {
-    ...filters,
-    page,
-  }, {
-    preserveState: true,
-    preserveScroll: true,
-  });
 };
 
 const formatDate = (date: string | null): string => {

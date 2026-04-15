@@ -104,7 +104,7 @@
 
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 
 const props = defineProps<{
   pagination: {
@@ -132,14 +132,17 @@ const getPageUrl = (page: number): string => {
   }
   
   const route = (name: string): string => {
-  const routes: Record<string, string> = {
-    'admin.vehicles.index': '/admin/vehicles',
-    'admin.residences.index': '/admin/residences',
-    'admin.combo-offers.index': '/admin/combo-offers',
-    'owner.vehicles.index': '/owner/vehicles',
-    'owner.residences.index': '/owner/residences',
-    'owner.bookings.index': '/owner/bookings',
-  };
+    const routes: Record<string, string> = {
+      'admin.vehicles.index': '/admin/vehicles',
+      'admin.residences.index': '/admin/residences',
+      'admin.combo-offers.index': '/admin/combo-offers',
+      'admin.bookings.index': '/admin/bookings',
+      'admin.users.index': '/admin/users',
+      'owner.vehicles.index': '/owner/vehicles',
+      'owner.residences.index': '/owner/residences',
+      'owner.bookings.index': '/owner/bookings',
+      'owner.combo-offers.index': '/owner/combo-offers',
+    };
     return routes[name] || '#';
   };
   
@@ -189,14 +192,5 @@ const getPageNumbers = (): (number | string)[] => {
   return pages;
 };
 
-// Debug: afficher les données de pagination
-onMounted(() => {
-  if (props.pagination) {
-    console.log('Pagination data:', props.pagination);
-    console.log('Page numbers:', getPageNumbers());
-  } else {
-    console.warn('Pagination is null or undefined');
-  }
-});
 </script>
 
