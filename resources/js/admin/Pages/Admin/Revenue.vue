@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { route } from 'ziggy-js';
 import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import StatCard from '../../Components/Owner/StatCard.vue';

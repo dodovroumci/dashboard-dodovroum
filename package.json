@@ -27,6 +27,7 @@
         "lucide-vue-next": "^0.554.0",
         "vue": "^3.5.25",
         "vue3-apexcharts": "^1.10.0",
+        "ziggy-js": "^2.6.2",
         "zod": "^4.3.6"
     }
 }
