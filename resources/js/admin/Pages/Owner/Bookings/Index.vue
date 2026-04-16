@@ -711,6 +711,10 @@ const formatStatus = (status?: string): string => {
     return 'Confirmée';
   } else if (statusLower === 'cancelled' || statusLower === 'annulee' || statusLower === 'annulée') {
     return 'Annulée';
+  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
+    return 'Expirée';
+  } else if (statusLower === 'failed' || statusLower === 'echec' || statusLower === 'échec' || statusLower === 'echoue' || statusLower === 'échoué') {
+    return 'Échouée';
   } else if (statusLower === 'completed' || statusLower === 'terminee' || statusLower === 'terminée') {
     return 'Terminée';
   }
@@ -732,6 +736,10 @@ const getStatusClass = (status?: string): string => {
   } else if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-100 text-emerald-700';
   } else if (statusLower === 'cancelled' || statusLower === 'annulee' || statusLower === 'annulée') {
+    return 'bg-red-100 text-red-700';
+  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
+    return 'bg-slate-100 text-slate-700';
+  } else if (statusLower === 'failed' || statusLower === 'echec' || statusLower === 'échec' || statusLower === 'echoue' || statusLower === 'échoué') {
     return 'bg-red-100 text-red-700';
   } else if (statusLower === 'completed' || statusLower === 'terminee' || statusLower === 'terminée') {
     return 'bg-blue-100 text-blue-700';

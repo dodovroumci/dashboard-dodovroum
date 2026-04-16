@@ -569,12 +569,23 @@ const formatStatus = (status: string): string => {
     awaitingpayment: 'En attente de paiement',
     pending: 'En attente',
     'en attente': 'En attente',
+    paid: 'Payée',
+    'payé': 'Payée',
+    paye: 'Payée',
     confirmed: 'Confirmée',
     confirmee: 'Confirmée',
     'confirmée': 'Confirmée',
     cancelled: 'Annulée',
     canceled: 'Annulée',
     'annulée': 'Annulée',
+    expired: 'Expirée',
+    expiree: 'Expirée',
+    'expirée': 'Expirée',
+    failed: 'Échouée',
+    echec: 'Échouée',
+    'échec': 'Échouée',
+    echoue: 'Échouée',
+    'échoué': 'Échouée',
     completed: 'Terminée',
     terminee: 'Terminée',
     'terminée': 'Terminée',
@@ -668,11 +679,18 @@ const getStatusClass = (status: string): string => {
   if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
     return 'bg-orange-100 text-orange-900';
   }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-100 text-emerald-800';
+  }
   if (statusLower === 'confirmed' || statusLower === 'confirmee' || statusLower === 'confirmée') {
     return 'bg-emerald-100 text-emerald-800';
   } else if (statusLower === 'pending' || statusLower === 'en attente') {
     return 'bg-yellow-100 text-yellow-800';
   } else if (statusLower === 'cancelled' || statusLower === 'canceled' || statusLower === 'annulee' || statusLower === 'annulée') {
+    return 'bg-red-100 text-red-800';
+  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
+    return 'bg-slate-100 text-slate-800';
+  } else if (statusLower === 'failed' || statusLower === 'echec' || statusLower === 'échec' || statusLower === 'echoue' || statusLower === 'échoué') {
     return 'bg-red-100 text-red-800';
   } else if (statusLower === 'completed' || statusLower === 'terminee' || statusLower === 'terminée') {
     return 'bg-blue-100 text-blue-800';
