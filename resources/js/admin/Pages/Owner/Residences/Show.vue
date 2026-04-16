@@ -268,9 +268,9 @@
                   <td class="px-4 py-3">
                     <span
                       class="text-xs px-3 py-1 rounded-full font-medium"
-                      :class="getBookingStatusClass(normalizeStatus(booking))"
+                      :class="getBookingStatusClass(booking.status)"
                     >
-                      {{ getBookingStatusLabel(normalizeStatus(booking)) }}
+                      {{ booking.status }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right">
@@ -513,8 +513,6 @@ const props = defineProps<{
     amount: number;
     status: string;
     statusRaw: string;
-    ownerConfirmedAt?: string | null;
-    createdAt?: string | null;
   }>;
 }>();
 
@@ -616,59 +614,18 @@ const getStatusLabel = (status: string | boolean | undefined): string => {
   return statusMap[status.toLowerCase()] || status;
 };
 
-const normalizeStatus = (booking: { status?: string; statusRaw?: string; ownerConfirmedAt?: string | null; createdAt?: string | null }): string => {
-  const raw = (booking.statusRaw || booking.status || 'pending').toLowerCase();
-
-  // 1. Priorité aux statuts finaux.
-  if (['confirmed', 'cancelled', 'paid', 'expired'].includes(raw)) {
-    return raw;
-  }
-
-  // 2. Si le propriétaire a confirmé.
-  if (booking.ownerConfirmedAt && String(booking.ownerConfirmedAt).trim() !== '' && String(booking.ownerConfirmedAt).toLowerCase() !== 'null') {
-    return 'confirmed';
-  }
-
-  // 3. Règle des 5 minutes pour pending.
-  if (raw === 'pending' && booking.createdAt) {
-    const createdAtMs = new Date(booking.createdAt).getTime();
-    if (!Number.isNaN(createdAtMs)) {
-      const ageMs = Date.now() - createdAtMs;
-      if (ageMs > 5 * 60 * 1000) {
-        return 'expired';
-      }
-    }
-  }
-
-  return 'pending';
-};
-
 const getBookingStatusClass = (status: string): string => {
-  const statusLower = (status || '').toLowerCase().trim();
-  if (statusLower === 'confirmed') {
+  const statusLower = status.toLowerCase();
+  if (statusLower === 'confirmée' || statusLower === 'confirmed') {
     return 'bg-emerald-100 text-emerald-700';
-  } else if (statusLower === 'paid') {
-    return 'bg-blue-100 text-blue-700';
-  } else if (statusLower === 'pending') {
+  } else if (statusLower === 'en attente' || statusLower === 'pending') {
     return 'bg-amber-100 text-amber-700';
-  } else if (statusLower === 'expired') {
+  } else if (statusLower === 'annulée' || statusLower === 'cancelled') {
     return 'bg-red-100 text-red-700';
-  } else if (statusLower === 'cancelled') {
-    return 'bg-slate-100 text-slate-700';
+  } else if (statusLower === 'terminée' || statusLower === 'completed') {
+    return 'bg-blue-100 text-blue-700';
   }
   return 'bg-slate-100 text-slate-700';
-};
-
-const getBookingStatusLabel = (status: string): string => {
-  const statusLower = (status || '').toLowerCase().trim();
-  const statusMap: Record<string, string> = {
-    pending: 'En attente',
-    expired: 'Expirée',
-    confirmed: 'Confirmée',
-    paid: 'Payée',
-    cancelled: 'Annulée',
-  };
-  return statusMap[statusLower] || status || 'Inconnu';
 };
 
 const handleImageError = (index: number) => {

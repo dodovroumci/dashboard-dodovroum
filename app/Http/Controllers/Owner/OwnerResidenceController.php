@@ -926,10 +926,56 @@ class OwnerResidenceController extends Controller
                 }
             }
             
-            // Données brutes pour laisser le Front appliquer la logique métier d'affichage.
-            $statusCanonical = strtolower((string) ($booking['status'] ?? 'pending'));
-            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
-            $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
+            // Vérifier si la date de fin est passée
+            $isStayCompleted = false;
+            if ($endDate) {
+                try {
+                    $today = new \DateTimeImmutable('today');
+                    $end = new \DateTimeImmutable($endDate);
+                    $isStayCompleted = $today > $end;
+                    
+                    // Log pour déboguer
+                    Log::info('Vérification date de fin réservation (espace propriétaire)', [
+                        'booking_id' => $booking['id'] ?? $booking['_id'] ?? null,
+                        'endDate' => $endDate,
+                        'today' => $today->format('Y-m-d'),
+                        'end_date_formatted' => $end->format('Y-m-d'),
+                        'isStayCompleted' => $isStayCompleted,
+                        'comparison' => $today > $end ? 'today > end' : 'today <= end',
+                    ]);
+                } catch (\Exception $e) {
+                    Log::warning('Erreur lors de la vérification de la date de fin', [
+                        'booking_id' => $booking['id'] ?? $booking['_id'] ?? null,
+                        'endDate' => $endDate,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+            
+            // Formater le statut
+            $status = $booking['status'] ?? 'pending';
+            $statusUpper = strtoupper($status);
+            
+            // PRIORITÉ 1: Si la date de fin est passée, la réservation est terminée
+            if ($isStayCompleted) {
+                $statusFormatted = 'Terminée';
+                Log::info('Réservation automatiquement marquée comme terminée (espace propriétaire)', [
+                    'booking_id' => $booking['id'] ?? $booking['_id'] ?? null,
+                    'raw_status' => $status,
+                    'end_date' => $endDate,
+                    'final_status' => $statusFormatted,
+                ]);
+            }
+            // PRIORITÉ 2: Utiliser le statut de l'API
+            elseif (strtolower($status) === 'confirmed' || strtolower($status) === 'confirmee') {
+                $statusFormatted = 'Confirmée';
+            } elseif (strtolower($status) === 'cancelled' || strtolower($status) === 'annulee' || strtolower($status) === 'canceled') {
+                $statusFormatted = 'Annulée';
+            } elseif (strtolower($status) === 'completed' || strtolower($status) === 'terminee' || strtolower($status) === 'terminée') {
+                $statusFormatted = 'Terminée';
+            } else {
+                $statusFormatted = 'En attente';
+            }
             
             $mapped[] = [
                 'id' => $booking['id'] ?? $booking['_id'] ?? null,
@@ -938,18 +984,14 @@ class OwnerResidenceController extends Controller
                 'startDate' => $startDate, // Ajouter la date de début brute
                 'endDate' => $endDate, // Ajouter la date de fin brute
                 'amount' => (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0),
-                'status' => $statusCanonical,
-                'statusRaw' => $statusCanonical,
-                'ownerConfirmedAt' => $ownerConfirmedAt,
-                'createdAt' => $createdAt,
+                'status' => $statusFormatted,
+                'statusRaw' => $status,
             ];
         }
         
-        // Trier par date de création (plus récent en premier)
+        // Trier par date de début (plus récentes en premier)
         usort($mapped, function($a, $b) {
-            $timeA = isset($a['createdAt']) && $a['createdAt'] ? strtotime((string) $a['createdAt']) : 0;
-            $timeB = isset($b['createdAt']) && $b['createdAt'] ? strtotime((string) $b['createdAt']) : 0;
-            return $timeB <=> $timeA;
+            return $b['id'] <=> $a['id']; // Simplifié - à améliorer avec vraie date
         });
         
         return $mapped;
@@ -1203,26 +1245,6 @@ class OwnerResidenceController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'Erreur lors du déblocage de la date'], 500);
-        }
-    }
-
-    /**
-     * Retourne true seulement si ownerConfirmedAt est une vraie date (pas null, "", "null", etc.)
-     */
-    private function isOwnerConfirmedAtSet(mixed $ownerConfirmedAt): bool
-    {
-        if ($ownerConfirmedAt === null || $ownerConfirmedAt === false) {
-            return false;
-        }
-        $s = trim((string) $ownerConfirmedAt);
-        if ($s === '' || strtolower($s) === 'null' || strtolower($s) === 'undefined') {
-            return false;
-        }
-        try {
-            new \DateTimeImmutable($s);
-            return true;
-        } catch (\Exception $e) {
-            return false;
         }
     }
 }

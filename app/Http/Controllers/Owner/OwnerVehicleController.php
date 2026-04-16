@@ -797,10 +797,16 @@ class OwnerVehicleController extends Controller
                 }
             }
             
-            // Données brutes pour laisser le Front appliquer la logique métier d'affichage.
-            $statusCanonical = strtolower((string) ($booking['status'] ?? 'pending'));
-            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
-            $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
+            // Formater le statut
+            $status = $booking['status'] ?? 'pending';
+            $statusFormatted = 'En attente';
+            if (strtolower($status) === 'confirmed' || strtolower($status) === 'confirmee') {
+                $statusFormatted = 'Confirmée';
+            } elseif (strtolower($status) === 'cancelled' || strtolower($status) === 'annulee') {
+                $statusFormatted = 'Annulée';
+            } elseif (strtolower($status) === 'completed' || strtolower($status) === 'terminee') {
+                $statusFormatted = 'Terminée';
+            }
             
             $mapped[] = [
                 'id' => $booking['id'] ?? $booking['_id'] ?? null,
@@ -809,18 +815,14 @@ class OwnerVehicleController extends Controller
                 'startDate' => $startDate, // Ajouter la date de début brute
                 'endDate' => $endDate, // Ajouter la date de fin brute
                 'amount' => (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0),
-                'status' => $statusCanonical,
-                'statusRaw' => $statusCanonical,
-                'ownerConfirmedAt' => $ownerConfirmedAt,
-                'createdAt' => $createdAt,
+                'status' => $statusFormatted,
+                'statusRaw' => $status,
             ];
         }
         
-        // Trier par date de création (plus récent en premier)
+        // Trier par date de début (plus récentes en premier)
         usort($mapped, function($a, $b) {
-            $timeA = isset($a['createdAt']) && $a['createdAt'] ? strtotime((string) $a['createdAt']) : 0;
-            $timeB = isset($b['createdAt']) && $b['createdAt'] ? strtotime((string) $b['createdAt']) : 0;
-            return $timeB <=> $timeA;
+            return $b['id'] <=> $a['id']; // Simplifié - à améliorer avec vraie date
         });
         
         return $mapped;
@@ -1066,26 +1068,6 @@ class OwnerVehicleController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'Erreur lors du déblocage de la date'], 500);
-        }
-    }
-
-    /**
-     * Retourne true seulement si ownerConfirmedAt est une vraie date (pas null, "", "null", etc.)
-     */
-    private function isOwnerConfirmedAtSet(mixed $ownerConfirmedAt): bool
-    {
-        if ($ownerConfirmedAt === null || $ownerConfirmedAt === false) {
-            return false;
-        }
-        $s = trim((string) $ownerConfirmedAt);
-        if ($s === '' || strtolower($s) === 'null' || strtolower($s) === 'undefined') {
-            return false;
-        }
-        try {
-            new \DateTimeImmutable($s);
-            return true;
-        } catch (\Exception $e) {
-            return false;
         }
     }
 }
