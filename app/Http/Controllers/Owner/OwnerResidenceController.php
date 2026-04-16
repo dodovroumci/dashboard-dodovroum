@@ -959,10 +959,29 @@ class OwnerResidenceController extends Controller
             $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
             $checkOutAt = $booking['checkOutAt'] ?? $booking['check_out_at'] ?? null;
             $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
+            $ownerConfirmedFlag = $booking['ownerConfirmed'] ?? $booking['owner_confirmed'] ?? null;
 
             $isOwnerConfirmed = !empty($ownerConfirmedAt)
                 && strtolower((string) $ownerConfirmedAt) !== 'null'
                 && strtolower((string) $ownerConfirmedAt) !== 'undefined';
+            if (!$isOwnerConfirmed && is_bool($ownerConfirmedFlag)) {
+                $isOwnerConfirmed = $ownerConfirmedFlag;
+            }
+            if (!$isOwnerConfirmed && is_numeric($ownerConfirmedFlag)) {
+                $isOwnerConfirmed = ((int) $ownerConfirmedFlag) === 1;
+            }
+
+            $isPaymentValidated = false;
+            $payments = $booking['payments'] ?? [];
+            if (is_array($payments)) {
+                foreach ($payments as $payment) {
+                    $paymentStatus = strtolower(trim((string) ($payment['status'] ?? '')));
+                    if (in_array($paymentStatus, ['completed', 'paid', 'validated', 'success', 'succeeded'], true)) {
+                        $isPaymentValidated = true;
+                        break;
+                    }
+                }
+            }
 
             // Statut canonique exploitable côté frontend.
             $statusCanonical = 'pending';
@@ -970,6 +989,8 @@ class OwnerResidenceController extends Controller
                 $statusCanonical = 'completed';
             } elseif ($statusUpper === 'AWAITING_PAYMENT' || $statusLower === 'awaitingpayment') {
                 $statusCanonical = 'awaiting_payment';
+            } elseif ($isPaymentValidated) {
+                $statusCanonical = 'paid';
             } elseif ($isOwnerConfirmed) {
                 $statusCanonical = 'confirmed';
             } elseif (in_array($statusLower, ['paid', 'payé', 'paye'], true)) {
