@@ -228,65 +228,6 @@
           </div>
         </section>
 
-        <!-- 6. Réservations liées -->
-        <section class="bg-white border border-slate-200 rounded-2xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-slate-900">Réservations liées</h2>
-            <Link
-              href="/owner/bookings"
-              class="text-sm text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Voir toutes →
-            </Link>
-          </div>
-          <div v-if="bookings.length === 0" class="text-center py-8">
-            <Calendar class="w-12 h-12 text-slate-300 mx-auto mb-2" />
-            <p class="text-slate-500">Aucune réservation pour cette résidence</p>
-          </div>
-          <div v-else class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Client</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dates</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Montant</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-for="booking in bookings" :key="booking.id" class="hover:bg-slate-50">
-                  <td class="px-4 py-3 text-sm font-medium text-slate-900">
-                    {{ booking.customer }}
-                  </td>
-                  <td class="px-4 py-3 text-sm text-slate-600">
-                    {{ booking.dates }}
-                  </td>
-                  <td class="px-4 py-3 text-sm font-medium text-slate-900">
-                    {{ formatPrice(booking.amount) }} CFA
-                  </td>
-                  <td class="px-4 py-3">
-                    <span
-                      class="text-xs px-3 py-1 rounded-full font-medium"
-                      :class="getBookingStatusClass(booking.status)"
-                    >
-                      {{ booking.status }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <Link
-                      :href="`/owner/bookings/${booking.id}`"
-                      class="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Voir détails →
-                    </Link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         <!-- 7. Avis clients -->
         <section v-if="stats?.totalReviews > 0" class="bg-white border border-slate-200 rounded-2xl p-6">
           <h2 class="text-lg font-semibold text-slate-900 mb-4">Avis clients</h2>
@@ -612,20 +553,6 @@ const getStatusLabel = (status: string | boolean | undefined): string => {
     pending: 'En attente',
   };
   return statusMap[status.toLowerCase()] || status;
-};
-
-const getBookingStatusClass = (status: string): string => {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'confirmée' || statusLower === 'confirmed') {
-    return 'bg-emerald-100 text-emerald-700';
-  } else if (statusLower === 'en attente' || statusLower === 'pending') {
-    return 'bg-amber-100 text-amber-700';
-  } else if (statusLower === 'annulée' || statusLower === 'cancelled') {
-    return 'bg-red-100 text-red-700';
-  } else if (statusLower === 'terminée' || statusLower === 'completed') {
-    return 'bg-blue-100 text-blue-700';
-  }
-  return 'bg-slate-100 text-slate-700';
 };
 
 const handleImageError = (index: number) => {
