@@ -350,6 +350,7 @@ class OwnerDashboardController extends Controller
                 $statusUpper = strtoupper($rawStatus);
                 $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
                 $checkOutAt = $booking['checkOutAt'] ?? $booking['check_out_at'] ?? null;
+                $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
 
                 $isStayCompleted = false;
                 if ($endDate) {
@@ -374,6 +375,21 @@ class OwnerDashboardController extends Controller
                     $finalStatus = strtolower($rawStatus);
                 }
 
+                // Harmoniser avec la page Réservations:
+                // une réservation en attente > 5 minutes devient "expired".
+                if ($finalStatus === 'pending' && !empty($createdAt)) {
+                    try {
+                        $createdAtTime = new \DateTimeImmutable((string) $createdAt);
+                        $now = new \DateTimeImmutable();
+                        $pendingAgeSeconds = $now->getTimestamp() - $createdAtTime->getTimestamp();
+                        if ($pendingAgeSeconds > 5 * 60) {
+                            $finalStatus = 'expired';
+                        }
+                    } catch (\Exception $e) {
+                        // Ignorer les dates invalides et garder le statut calculé.
+                    }
+                }
+
                 $statusFormatted = 'En attente';
                 if (in_array(strtolower($finalStatus), ['confirmed', 'confirmee'])) {
                     $statusFormatted = 'Confirmée';
@@ -381,6 +397,8 @@ class OwnerDashboardController extends Controller
                     $statusFormatted = 'En attente de paiement';
                 } elseif (strtolower($finalStatus) === 'pending') {
                     $statusFormatted = 'En attente';
+                } elseif (strtolower($finalStatus) === 'expired') {
+                    $statusFormatted = 'Expirée';
                 } elseif (in_array(strtolower($finalStatus), ['cancelled', 'canceled', 'annulée', 'annulee'])) {
                     $statusFormatted = 'Annulée';
                 } elseif (in_array(strtolower($finalStatus), ['completed', 'terminee', 'terminée'])) {
