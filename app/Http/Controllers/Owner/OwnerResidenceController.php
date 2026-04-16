@@ -952,30 +952,65 @@ class OwnerResidenceController extends Controller
                 }
             }
             
-            // Formater le statut
-            $status = $booking['status'] ?? 'pending';
-            $statusUpper = strtoupper($status);
-            
-            // PRIORITÉ 1: Si la date de fin est passée, la réservation est terminée
-            if ($isStayCompleted) {
-                $statusFormatted = 'Terminée';
-                Log::info('Réservation automatiquement marquée comme terminée (espace propriétaire)', [
-                    'booking_id' => $booking['id'] ?? $booking['_id'] ?? null,
-                    'raw_status' => $status,
-                    'end_date' => $endDate,
-                    'final_status' => $statusFormatted,
-                ]);
-            }
-            // PRIORITÉ 2: Utiliser le statut de l'API
-            elseif (strtolower($status) === 'confirmed' || strtolower($status) === 'confirmee') {
-                $statusFormatted = 'Confirmée';
-            } elseif (strtolower($status) === 'cancelled' || strtolower($status) === 'annulee' || strtolower($status) === 'canceled') {
-                $statusFormatted = 'Annulée';
-            } elseif (strtolower($status) === 'completed' || strtolower($status) === 'terminee' || strtolower($status) === 'terminée') {
-                $statusFormatted = 'Terminée';
+            // Formater le statut de manière cohérente avec les autres pages.
+            $rawStatus = (string) ($booking['status'] ?? 'pending');
+            $statusLower = strtolower(trim($rawStatus));
+            $statusUpper = strtoupper($rawStatus);
+            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
+            $checkOutAt = $booking['checkOutAt'] ?? $booking['check_out_at'] ?? null;
+            $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
+
+            $isOwnerConfirmed = !empty($ownerConfirmedAt)
+                && strtolower((string) $ownerConfirmedAt) !== 'null'
+                && strtolower((string) $ownerConfirmedAt) !== 'undefined';
+
+            // Statut canonique exploitable côté frontend.
+            $statusCanonical = 'pending';
+            if (!empty($checkOutAt) || $isStayCompleted) {
+                $statusCanonical = 'completed';
+            } elseif ($statusUpper === 'AWAITING_PAYMENT' || $statusLower === 'awaitingpayment') {
+                $statusCanonical = 'awaiting_payment';
+            } elseif ($isOwnerConfirmed) {
+                $statusCanonical = 'confirmed';
+            } elseif (in_array($statusLower, ['paid', 'payé', 'paye'], true)) {
+                $statusCanonical = 'paid';
+            } elseif (in_array($statusLower, ['cancelled', 'canceled', 'annulee', 'annulée'], true)) {
+                $statusCanonical = 'cancelled';
+            } elseif (in_array($statusLower, ['failed', 'echec', 'échec', 'echoue', 'échoué'], true)) {
+                $statusCanonical = 'failed';
+            } elseif (in_array($statusLower, ['expired', 'expirée', 'expiree'], true)) {
+                $statusCanonical = 'expired';
+            } elseif (in_array($statusLower, ['completed', 'terminee', 'terminée'], true)) {
+                $statusCanonical = 'completed';
+            } elseif (in_array($statusLower, ['confirmed', 'confirmee', 'confirmée'], true)) {
+                $statusCanonical = 'confirmed';
             } else {
-                $statusFormatted = 'En attente';
+                $statusCanonical = 'pending';
             }
+
+            // Pending expiré après 5 minutes.
+            if ($statusCanonical === 'pending' && !empty($createdAt)) {
+                try {
+                    $createdAtTime = new \DateTimeImmutable((string) $createdAt);
+                    $now = new \DateTimeImmutable();
+                    if (($now->getTimestamp() - $createdAtTime->getTimestamp()) > 5 * 60) {
+                        $statusCanonical = 'expired';
+                    }
+                } catch (\Exception $e) {
+                    // Garder pending si la date est invalide.
+                }
+            }
+
+            $statusFormatted = match ($statusCanonical) {
+                'confirmed' => 'Confirmée',
+                'paid' => 'Payée',
+                'awaiting_payment' => 'En attente de paiement',
+                'cancelled' => 'Annulée',
+                'failed' => 'Échouée',
+                'expired' => 'Expirée',
+                'completed' => 'Terminée',
+                default => 'En attente',
+            };
             
             $mapped[] = [
                 'id' => $booking['id'] ?? $booking['_id'] ?? null,
@@ -985,7 +1020,7 @@ class OwnerResidenceController extends Controller
                 'endDate' => $endDate, // Ajouter la date de fin brute
                 'amount' => (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0),
                 'status' => $statusFormatted,
-                'statusRaw' => $status,
+                'statusRaw' => $statusCanonical,
             ];
         }
         
