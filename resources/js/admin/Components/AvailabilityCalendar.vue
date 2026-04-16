@@ -181,10 +181,10 @@ const bookingDates = computed(() => {
       start.setHours(0, 0, 0, 0);
       end.setHours(0, 0, 0, 0);
       
-      const status = (booking.statusRaw || booking.status || 'pending').toLowerCase();
+      const status = normalizeCalendarStatus(booking.statusRaw || booking.status || 'pending');
       
-      // Ignorer les réservations annulées
-      if (status === 'cancelled' || status === 'annulee' || status === 'annulée') {
+      // Ignorer les réservations annulées/échouées/expirées
+      if (status === 'cancelled') {
         return;
       }
       
@@ -266,6 +266,37 @@ const getCurrentMonthDateKey = (day: number): number => {
   return getDateKey(date);
 };
 
+const normalizeCalendarStatus = (rawStatus: string): 'confirmed' | 'pending' | 'cancelled' => {
+  const status = (rawStatus || '').toLowerCase().trim();
+
+  if (
+    status === 'cancelled' ||
+    status === 'canceled' ||
+    status === 'annulee' ||
+    status === 'annulée' ||
+    status === 'failed' ||
+    status === 'echec' ||
+    status === 'échec' ||
+    status === 'expired' ||
+    status === 'expiree' ||
+    status === 'expirée'
+  ) {
+    return 'cancelled';
+  }
+
+  if (
+    status === 'pending' ||
+    status === 'en attente' ||
+    status === 'en_attente' ||
+    status === 'awaiting_payment' ||
+    status === 'awaitingpayment'
+  ) {
+    return 'pending';
+  }
+
+  return 'confirmed';
+};
+
 const hasBooking = (day: number): boolean => {
   const dateKey = getCurrentMonthDateKey(day);
   return bookingDates.value.has(dateKey);
@@ -277,9 +308,8 @@ const hasActiveBooking = (day: number): boolean => {
   const booking = bookingDates.value.get(dateKey);
   if (!booking) return false;
   
-  // Ignorer les réservations annulées
-  const status = booking.status?.toLowerCase() || '';
-  return status !== 'cancelled' && status !== 'annulee' && status !== 'annulée';
+  const status = normalizeCalendarStatus(booking.status || '');
+  return status !== 'cancelled';
 };
 
 const getBookingStatus = (day: number): string | null => {
@@ -307,16 +337,16 @@ const getDayClass = (day: number): string => {
   }
   
   if (booking) {
-    const status = booking.status?.toLowerCase() || '';
-    if (status === 'confirmed' || status === 'confirmee' || status === 'confirmée') {
+    const status = normalizeCalendarStatus(booking.status || '');
+    if (status === 'confirmed') {
       return isToday 
         ? 'bg-blue-200 border-2 border-blue-600 text-blue-900 font-semibold'
         : 'bg-blue-100 border border-blue-300 text-blue-900 hover:bg-blue-200';
-    } else if (status === 'pending' || status === 'en attente') {
+    } else if (status === 'pending') {
       return isToday
         ? 'bg-amber-200 border-2 border-amber-600 text-amber-900 font-semibold'
         : 'bg-amber-100 border border-amber-300 text-amber-900 hover:bg-amber-200';
-    } else if (status === 'cancelled' || status === 'annulee' || status === 'annulée') {
+    } else if (status === 'cancelled') {
       return isToday
         ? 'bg-slate-200 border-2 border-slate-600 text-slate-700 font-semibold'
         : 'bg-slate-100 border border-slate-300 text-slate-700 hover:bg-slate-200';
