@@ -268,9 +268,9 @@
                   <td class="px-4 py-3">
                     <span
                       class="text-xs px-3 py-1 rounded-full font-medium"
-                      :class="getBookingStatusClass(booking.statusRaw || booking.status)"
+                      :class="getBookingStatusClass(normalizeStatus(booking))"
                     >
-                      {{ getBookingStatusLabel(booking.statusRaw || booking.status) }}
+                      {{ getBookingStatusLabel(normalizeStatus(booking)) }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right">
@@ -513,6 +513,8 @@ const props = defineProps<{
     amount: number;
     status: string;
     statusRaw: string;
+    ownerConfirmedAt?: string | null;
+    createdAt?: string | null;
   }>;
 }>();
 
@@ -612,6 +614,30 @@ const getStatusLabel = (status: string | boolean | undefined): string => {
     pending: 'En attente',
   };
   return statusMap[status.toLowerCase()] || status;
+};
+
+const normalizeStatus = (booking: { status?: string; statusRaw?: string; ownerConfirmedAt?: string | null; createdAt?: string | null }): string => {
+  const raw = (booking.statusRaw || booking.status || 'pending').toLowerCase();
+
+  if (raw === 'expired' || raw === 'cancelled' || raw === 'canceled' || raw === 'annulee' || raw === 'annulée') {
+    return raw;
+  }
+
+  if (booking.ownerConfirmedAt && String(booking.ownerConfirmedAt).trim() !== '' && String(booking.ownerConfirmedAt).toLowerCase() !== 'null') {
+    return 'confirmed';
+  }
+
+  if (raw === 'pending' && booking.createdAt) {
+    const createdAtMs = new Date(booking.createdAt).getTime();
+    if (!Number.isNaN(createdAtMs)) {
+      const ageMs = Date.now() - createdAtMs;
+      if (ageMs > 5 * 60 * 1000) {
+        return 'expired';
+      }
+    }
+  }
+
+  return raw;
 };
 
 const getBookingStatusClass = (status: string): string => {

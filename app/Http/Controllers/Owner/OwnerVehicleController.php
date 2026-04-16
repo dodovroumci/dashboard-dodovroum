@@ -797,44 +797,10 @@ class OwnerVehicleController extends Controller
                 }
             }
             
-            // Appliquer la même logique que la page "Réservations" (OwnerBookingController::index).
-            $rawStatus = $booking['status'] ?? 'pending';
-            $statusUpper = strtoupper($rawStatus);
+            // Données brutes pour laisser le Front appliquer la logique métier d'affichage.
+            $statusCanonical = strtolower((string) ($booking['status'] ?? 'pending'));
             $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
             $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
-            $hasOwnerConfirmed = $this->isOwnerConfirmedAtSet($ownerConfirmedAt);
-
-            if (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
-                $statusCanonical = 'pending';
-            } elseif ($statusUpper === 'AWAITING_PAYMENT') {
-                $statusCanonical = 'awaiting_payment';
-            } elseif ($statusUpper === 'PENDING') {
-                $statusCanonical = 'pending';
-            } else {
-                $statusCanonical = strtolower($rawStatus);
-            }
-
-            // Même règle que la page Réservations: pending > 5 min = expired.
-            if ($statusCanonical === 'pending' && !empty($createdAt)) {
-                try {
-                    $createdAtTime = new \DateTimeImmutable((string) $createdAt);
-                    $now = new \DateTimeImmutable();
-                    if (($now->getTimestamp() - $createdAtTime->getTimestamp()) > 5 * 60) {
-                        $statusCanonical = 'expired';
-                    }
-                } catch (\Exception $e) {
-                    // Garder pending si createdAt est invalide.
-                }
-            }
-
-            $statusFormatted = match ($statusCanonical) {
-                'confirmed', 'confirmee', 'confirmée' => 'Confirmée',
-                'cancelled', 'canceled', 'annulee', 'annulée' => 'Annulée',
-                'completed', 'terminee', 'terminée' => 'Terminée',
-                'awaiting_payment' => 'En attente de paiement',
-                'expired' => 'Expirée',
-                default => 'En attente',
-            };
             
             $mapped[] = [
                 'id' => $booking['id'] ?? $booking['_id'] ?? null,
@@ -843,14 +809,18 @@ class OwnerVehicleController extends Controller
                 'startDate' => $startDate, // Ajouter la date de début brute
                 'endDate' => $endDate, // Ajouter la date de fin brute
                 'amount' => (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0),
-                'status' => $statusFormatted,
+                'status' => $statusCanonical,
                 'statusRaw' => $statusCanonical,
+                'ownerConfirmedAt' => $ownerConfirmedAt,
+                'createdAt' => $createdAt,
             ];
         }
         
-        // Trier par date de début (plus récentes en premier)
+        // Trier par date de création (plus récent en premier)
         usort($mapped, function($a, $b) {
-            return $b['id'] <=> $a['id']; // Simplifié - à améliorer avec vraie date
+            $timeA = isset($a['createdAt']) && $a['createdAt'] ? strtotime((string) $a['createdAt']) : 0;
+            $timeB = isset($b['createdAt']) && $b['createdAt'] ? strtotime((string) $b['createdAt']) : 0;
+            return $timeB <=> $timeA;
         });
         
         return $mapped;
