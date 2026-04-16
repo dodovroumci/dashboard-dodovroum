@@ -619,14 +619,17 @@ const getStatusLabel = (status: string | boolean | undefined): string => {
 const normalizeStatus = (booking: { status?: string; statusRaw?: string; ownerConfirmedAt?: string | null; createdAt?: string | null }): string => {
   const raw = (booking.statusRaw || booking.status || 'pending').toLowerCase();
 
-  if (raw === 'expired' || raw === 'cancelled' || raw === 'canceled' || raw === 'annulee' || raw === 'annulée') {
+  // 1. Priorité aux statuts finaux.
+  if (['confirmed', 'cancelled', 'paid', 'expired'].includes(raw)) {
     return raw;
   }
 
+  // 2. Si le propriétaire a confirmé.
   if (booking.ownerConfirmedAt && String(booking.ownerConfirmedAt).trim() !== '' && String(booking.ownerConfirmedAt).toLowerCase() !== 'null') {
     return 'confirmed';
   }
 
+  // 3. Règle des 5 minutes pour pending.
   if (raw === 'pending' && booking.createdAt) {
     const createdAtMs = new Date(booking.createdAt).getTime();
     if (!Number.isNaN(createdAtMs)) {
@@ -637,27 +640,21 @@ const normalizeStatus = (booking: { status?: string; statusRaw?: string; ownerCo
     }
   }
 
-  return raw;
+  return 'pending';
 };
 
 const getBookingStatusClass = (status: string): string => {
   const statusLower = (status || '').toLowerCase().trim();
-  if (statusLower === 'confirmée' || statusLower === 'confirmed' || statusLower === 'confirmee') {
+  if (statusLower === 'confirmed') {
     return 'bg-emerald-100 text-emerald-700';
-  } else if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
-    return 'bg-emerald-100 text-emerald-700';
-  } else if (statusLower === 'en attente' || statusLower === 'pending' || statusLower === 'en_attente') {
-    return 'bg-amber-100 text-amber-700';
-  } else if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
-    return 'bg-orange-100 text-orange-900';
-  } else if (statusLower === 'annulée' || statusLower === 'cancelled' || statusLower === 'annulee' || statusLower === 'canceled') {
-    return 'bg-red-100 text-red-700';
-  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
-    return 'bg-slate-100 text-slate-700';
-  } else if (statusLower === 'failed' || statusLower === 'echec' || statusLower === 'échec' || statusLower === 'echoue' || statusLower === 'échoué') {
-    return 'bg-red-100 text-red-700';
-  } else if (statusLower === 'terminée' || statusLower === 'completed' || statusLower === 'terminee') {
+  } else if (statusLower === 'paid') {
     return 'bg-blue-100 text-blue-700';
+  } else if (statusLower === 'pending') {
+    return 'bg-amber-100 text-amber-700';
+  } else if (statusLower === 'expired') {
+    return 'bg-red-100 text-red-700';
+  } else if (statusLower === 'cancelled') {
+    return 'bg-slate-100 text-slate-700';
   }
   return 'bg-slate-100 text-slate-700';
 };
@@ -665,32 +662,11 @@ const getBookingStatusClass = (status: string): string => {
 const getBookingStatusLabel = (status: string): string => {
   const statusLower = (status || '').toLowerCase().trim();
   const statusMap: Record<string, string> = {
-    awaiting_payment: 'En attente de paiement',
-    awaitingpayment: 'En attente de paiement',
     pending: 'En attente',
-    en_attente: 'En attente',
-    'en attente': 'En attente',
-    paid: 'Payée',
-    'payé': 'Payée',
-    paye: 'Payée',
-    confirmed: 'Confirmée',
-    confirmee: 'Confirmée',
-    'confirmée': 'Confirmée',
-    cancelled: 'Annulée',
-    canceled: 'Annulée',
-    annulee: 'Annulée',
-    'annulée': 'Annulée',
     expired: 'Expirée',
-    expiree: 'Expirée',
-    'expirée': 'Expirée',
-    failed: 'Échouée',
-    echec: 'Échouée',
-    'échec': 'Échouée',
-    echoue: 'Échouée',
-    'échoué': 'Échouée',
-    completed: 'Terminée',
-    terminee: 'Terminée',
-    'terminée': 'Terminée',
+    confirmed: 'Confirmée',
+    paid: 'Payée',
+    cancelled: 'Annulée',
   };
   return statusMap[statusLower] || status || 'Inconnu';
 };
