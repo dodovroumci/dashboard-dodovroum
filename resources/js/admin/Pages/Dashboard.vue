@@ -71,7 +71,7 @@
                   class="text-xs px-3 py-1 rounded-full font-medium"
                   :class="getStatusClass(booking.status)"
                 >
-                  {{ booking.status }}
+                  {{ formatStatus(booking.status) }}
                 </span>
               </td>
               <td class="px-4 py-3 text-right">
@@ -366,6 +366,39 @@ const formatPrice = (value: number | string): string => {
   return new Intl.NumberFormat('fr-FR').format(num);
 };
 
+const formatStatus = (status: string): string => {
+  const statusLower = (status || '').toLowerCase().trim();
+  const statusMap: Record<string, string> = {
+    awaiting_payment: 'En attente de paiement',
+    awaitingpayment: 'En attente de paiement',
+    'en attente de paiement': 'En attente de paiement',
+    pending: 'En attente',
+    'en attente': 'En attente',
+    paid: 'Payée',
+    'payé': 'Payée',
+    paye: 'Payée',
+    confirmed: 'Confirmée',
+    confirmee: 'Confirmée',
+    'confirmée': 'Confirmée',
+    cancelled: 'Annulée',
+    canceled: 'Annulée',
+    annulee: 'Annulée',
+    'annulée': 'Annulée',
+    expired: 'Expirée',
+    expiree: 'Expirée',
+    'expirée': 'Expirée',
+    failed: 'Échouée',
+    echec: 'Échouée',
+    'échec': 'Échouée',
+    echoue: 'Échouée',
+    'échoué': 'Échouée',
+    completed: 'Terminée',
+    terminee: 'Terminée',
+    'terminée': 'Terminée',
+  };
+  return statusMap[statusLower] || status;
+};
+
 const getStatusClass = (status: string): string => {
   const statusLower = status.toLowerCase();
   if (
@@ -375,13 +408,22 @@ const getStatusClass = (status: string): string => {
   ) {
     return 'bg-orange-100 text-orange-900';
   }
+  if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-100 text-emerald-800';
+  }
   if (statusLower === 'confirmée' || statusLower === 'confirmed' || statusLower === 'confirmee') {
     return 'bg-emerald-100 text-emerald-700';
   } else if (statusLower === 'en attente' || statusLower === 'pending') {
     return 'bg-amber-100 text-amber-700';
-  } else if (statusLower === 'annulée' || statusLower === 'cancelled') {
+  } else if (statusLower === 'annulée' || statusLower === 'cancelled' || statusLower === 'annulee' || statusLower === 'canceled') {
+    return 'bg-red-100 text-red-700';
+  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
+    return 'bg-slate-100 text-slate-700';
+  } else if (statusLower === 'failed' || statusLower === 'échec' || statusLower === 'echec' || statusLower === 'échoué' || statusLower === 'echoue') {
     return 'bg-red-100 text-red-700';
   } else if (statusLower === 'terminée' || statusLower === 'completed') {
+    return 'bg-blue-100 text-blue-700';
+  } else if (statusLower === 'terminee' || statusLower === 'terminée') {
     return 'bg-blue-100 text-blue-700';
   }
   return 'bg-slate-100 text-slate-700';
