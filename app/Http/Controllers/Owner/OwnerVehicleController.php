@@ -797,16 +797,29 @@ class OwnerVehicleController extends Controller
                 }
             }
             
-            // Formater le statut
-            $status = $booking['status'] ?? 'pending';
-            $statusFormatted = 'En attente';
-            if (strtolower($status) === 'confirmed' || strtolower($status) === 'confirmee') {
-                $statusFormatted = 'Confirmée';
-            } elseif (strtolower($status) === 'cancelled' || strtolower($status) === 'annulee') {
-                $statusFormatted = 'Annulée';
-            } elseif (strtolower($status) === 'completed' || strtolower($status) === 'terminee') {
-                $statusFormatted = 'Terminée';
+            // Appliquer la même logique que la page "Réservations" (OwnerBookingController::index).
+            $rawStatus = $booking['status'] ?? 'pending';
+            $statusUpper = strtoupper($rawStatus);
+            $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
+            $hasOwnerConfirmed = $this->isOwnerConfirmedAtSet($ownerConfirmedAt);
+
+            if (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
+                $statusCanonical = 'pending';
+            } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                $statusCanonical = 'awaiting_payment';
+            } elseif ($statusUpper === 'PENDING') {
+                $statusCanonical = 'pending';
+            } else {
+                $statusCanonical = strtolower($rawStatus);
             }
+
+            $statusFormatted = match ($statusCanonical) {
+                'confirmed', 'confirmee', 'confirmée' => 'Confirmée',
+                'cancelled', 'canceled', 'annulee', 'annulée' => 'Annulée',
+                'completed', 'terminee', 'terminée' => 'Terminée',
+                'awaiting_payment' => 'En attente de paiement',
+                default => 'En attente',
+            };
             
             $mapped[] = [
                 'id' => $booking['id'] ?? $booking['_id'] ?? null,
@@ -816,7 +829,7 @@ class OwnerVehicleController extends Controller
                 'endDate' => $endDate, // Ajouter la date de fin brute
                 'amount' => (float) ($booking['totalPrice'] ?? $booking['total_price'] ?? 0),
                 'status' => $statusFormatted,
-                'statusRaw' => $status,
+                'statusRaw' => $statusCanonical,
             ];
         }
         
@@ -1068,6 +1081,26 @@ class OwnerVehicleController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'Erreur lors du déblocage de la date'], 500);
+        }
+    }
+
+    /**
+     * Retourne true seulement si ownerConfirmedAt est une vraie date (pas null, "", "null", etc.)
+     */
+    private function isOwnerConfirmedAtSet(mixed $ownerConfirmedAt): bool
+    {
+        if ($ownerConfirmedAt === null || $ownerConfirmedAt === false) {
+            return false;
+        }
+        $s = trim((string) $ownerConfirmedAt);
+        if ($s === '' || strtolower($s) === 'null' || strtolower($s) === 'undefined') {
+            return false;
+        }
+        try {
+            new \DateTimeImmutable($s);
+            return true;
+        } catch (\Exception $e) {
+            return false;
         }
     }
 }

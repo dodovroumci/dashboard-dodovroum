@@ -952,84 +952,27 @@ class OwnerResidenceController extends Controller
                 }
             }
             
-            // Formater le statut de manière cohérente avec les autres pages.
-            $rawStatus = (string) ($booking['status'] ?? 'pending');
-            $statusLower = strtolower(trim($rawStatus));
+            // Appliquer la même logique que la page "Réservations" (OwnerBookingController::index).
+            $rawStatus = $booking['status'] ?? 'pending';
             $statusUpper = strtoupper($rawStatus);
             $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
-            $checkOutAt = $booking['checkOutAt'] ?? $booking['check_out_at'] ?? null;
-            $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
-            $ownerConfirmedFlag = $booking['ownerConfirmed'] ?? $booking['owner_confirmed'] ?? null;
+            $hasOwnerConfirmed = $this->isOwnerConfirmedAtSet($ownerConfirmedAt);
 
-            $isOwnerConfirmed = !empty($ownerConfirmedAt)
-                && strtolower((string) $ownerConfirmedAt) !== 'null'
-                && strtolower((string) $ownerConfirmedAt) !== 'undefined';
-            if (!$isOwnerConfirmed && is_bool($ownerConfirmedFlag)) {
-                $isOwnerConfirmed = $ownerConfirmedFlag;
-            }
-            if (!$isOwnerConfirmed && is_numeric($ownerConfirmedFlag)) {
-                $isOwnerConfirmed = ((int) $ownerConfirmedFlag) === 1;
-            }
-
-            $isPaymentValidated = false;
-            $payments = $booking['payments'] ?? [];
-            if (is_array($payments)) {
-                foreach ($payments as $payment) {
-                    $paymentStatus = strtolower(trim((string) ($payment['status'] ?? '')));
-                    if (in_array($paymentStatus, ['completed', 'paid', 'validated', 'success', 'succeeded'], true)) {
-                        $isPaymentValidated = true;
-                        break;
-                    }
-                }
-            }
-
-            // Statut canonique exploitable côté frontend.
-            $statusCanonical = 'pending';
-            if (!empty($checkOutAt) || $isStayCompleted) {
-                $statusCanonical = 'completed';
-            } elseif ($statusUpper === 'AWAITING_PAYMENT' || $statusLower === 'awaitingpayment') {
-                $statusCanonical = 'awaiting_payment';
-            } elseif ($isPaymentValidated) {
-                $statusCanonical = 'paid';
-            } elseif ($isOwnerConfirmed) {
-                $statusCanonical = 'confirmed';
-            } elseif (in_array($statusLower, ['paid', 'payé', 'paye'], true)) {
-                $statusCanonical = 'paid';
-            } elseif (in_array($statusLower, ['cancelled', 'canceled', 'annulee', 'annulée'], true)) {
-                $statusCanonical = 'cancelled';
-            } elseif (in_array($statusLower, ['failed', 'echec', 'échec', 'echoue', 'échoué'], true)) {
-                $statusCanonical = 'failed';
-            } elseif (in_array($statusLower, ['expired', 'expirée', 'expiree'], true)) {
-                $statusCanonical = 'expired';
-            } elseif (in_array($statusLower, ['completed', 'terminee', 'terminée'], true)) {
-                $statusCanonical = 'completed';
-            } elseif (in_array($statusLower, ['confirmed', 'confirmee', 'confirmée'], true)) {
-                $statusCanonical = 'confirmed';
-            } else {
+            if (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
                 $statusCanonical = 'pending';
-            }
-
-            // Pending expiré après 5 minutes.
-            if ($statusCanonical === 'pending' && !empty($createdAt)) {
-                try {
-                    $createdAtTime = new \DateTimeImmutable((string) $createdAt);
-                    $now = new \DateTimeImmutable();
-                    if (($now->getTimestamp() - $createdAtTime->getTimestamp()) > 5 * 60) {
-                        $statusCanonical = 'expired';
-                    }
-                } catch (\Exception $e) {
-                    // Garder pending si la date est invalide.
-                }
+            } elseif ($statusUpper === 'AWAITING_PAYMENT') {
+                $statusCanonical = 'awaiting_payment';
+            } elseif ($statusUpper === 'PENDING') {
+                $statusCanonical = 'pending';
+            } else {
+                $statusCanonical = strtolower($rawStatus);
             }
 
             $statusFormatted = match ($statusCanonical) {
-                'confirmed' => 'Confirmée',
-                'paid' => 'Payée',
+                'confirmed', 'confirmee', 'confirmée' => 'Confirmée',
+                'cancelled', 'canceled', 'annulee', 'annulée' => 'Annulée',
+                'completed', 'terminee', 'terminée' => 'Terminée',
                 'awaiting_payment' => 'En attente de paiement',
-                'cancelled' => 'Annulée',
-                'failed' => 'Échouée',
-                'expired' => 'Expirée',
-                'completed' => 'Terminée',
                 default => 'En attente',
             };
             
@@ -1301,6 +1244,26 @@ class OwnerResidenceController extends Controller
                 'error' => $e->getMessage()
             ]);
             return response()->json(['error' => 'Erreur lors du déblocage de la date'], 500);
+        }
+    }
+
+    /**
+     * Retourne true seulement si ownerConfirmedAt est une vraie date (pas null, "", "null", etc.)
+     */
+    private function isOwnerConfirmedAtSet(mixed $ownerConfirmedAt): bool
+    {
+        if ($ownerConfirmedAt === null || $ownerConfirmedAt === false) {
+            return false;
+        }
+        $s = trim((string) $ownerConfirmedAt);
+        if ($s === '' || strtolower($s) === 'null' || strtolower($s) === 'undefined') {
+            return false;
+        }
+        try {
+            new \DateTimeImmutable($s);
+            return true;
+        } catch (\Exception $e) {
+            return false;
         }
     }
 }
