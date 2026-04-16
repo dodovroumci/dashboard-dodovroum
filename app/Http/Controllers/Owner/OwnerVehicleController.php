@@ -801,6 +801,7 @@ class OwnerVehicleController extends Controller
             $rawStatus = $booking['status'] ?? 'pending';
             $statusUpper = strtoupper($rawStatus);
             $ownerConfirmedAt = $booking['ownerConfirmedAt'] ?? $booking['owner_confirmed_at'] ?? null;
+            $createdAt = $booking['createdAt'] ?? $booking['created_at'] ?? null;
             $hasOwnerConfirmed = $this->isOwnerConfirmedAtSet($ownerConfirmedAt);
 
             if (($statusUpper === 'CONFIRMEE' || $statusUpper === 'CONFIRMED') && !$hasOwnerConfirmed) {
@@ -813,11 +814,25 @@ class OwnerVehicleController extends Controller
                 $statusCanonical = strtolower($rawStatus);
             }
 
+            // Même règle que la page Réservations: pending > 5 min = expired.
+            if ($statusCanonical === 'pending' && !empty($createdAt)) {
+                try {
+                    $createdAtTime = new \DateTimeImmutable((string) $createdAt);
+                    $now = new \DateTimeImmutable();
+                    if (($now->getTimestamp() - $createdAtTime->getTimestamp()) > 5 * 60) {
+                        $statusCanonical = 'expired';
+                    }
+                } catch (\Exception $e) {
+                    // Garder pending si createdAt est invalide.
+                }
+            }
+
             $statusFormatted = match ($statusCanonical) {
                 'confirmed', 'confirmee', 'confirmée' => 'Confirmée',
                 'cancelled', 'canceled', 'annulee', 'annulée' => 'Annulée',
                 'completed', 'terminee', 'terminée' => 'Terminée',
                 'awaiting_payment' => 'En attente de paiement',
+                'expired' => 'Expirée',
                 default => 'En attente',
             };
             
