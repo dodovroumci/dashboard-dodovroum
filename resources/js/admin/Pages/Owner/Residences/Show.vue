@@ -268,9 +268,9 @@
                   <td class="px-4 py-3">
                     <span
                       class="text-xs px-3 py-1 rounded-full font-medium"
-                      :class="getBookingStatusClass(booking.status)"
+                      :class="getBookingStatusClass(booking.statusRaw || booking.status)"
                     >
-                      {{ booking.status }}
+                      {{ getBookingStatusLabel(booking.statusRaw || booking.status) }}
                     </span>
                   </td>
                   <td class="px-4 py-3 text-right">
@@ -615,17 +615,58 @@ const getStatusLabel = (status: string | boolean | undefined): string => {
 };
 
 const getBookingStatusClass = (status: string): string => {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'confirmée' || statusLower === 'confirmed') {
+  const statusLower = (status || '').toLowerCase().trim();
+  if (statusLower === 'confirmée' || statusLower === 'confirmed' || statusLower === 'confirmee') {
     return 'bg-emerald-100 text-emerald-700';
-  } else if (statusLower === 'en attente' || statusLower === 'pending') {
+  } else if (statusLower === 'paid' || statusLower === 'payé' || statusLower === 'paye') {
+    return 'bg-emerald-100 text-emerald-700';
+  } else if (statusLower === 'en attente' || statusLower === 'pending' || statusLower === 'en_attente') {
     return 'bg-amber-100 text-amber-700';
-  } else if (statusLower === 'annulée' || statusLower === 'cancelled') {
+  } else if (statusLower === 'awaiting_payment' || statusLower === 'awaitingpayment') {
+    return 'bg-orange-100 text-orange-900';
+  } else if (statusLower === 'annulée' || statusLower === 'cancelled' || statusLower === 'annulee' || statusLower === 'canceled') {
     return 'bg-red-100 text-red-700';
-  } else if (statusLower === 'terminée' || statusLower === 'completed') {
+  } else if (statusLower === 'expired' || statusLower === 'expirée' || statusLower === 'expiree') {
+    return 'bg-slate-100 text-slate-700';
+  } else if (statusLower === 'failed' || statusLower === 'echec' || statusLower === 'échec' || statusLower === 'echoue' || statusLower === 'échoué') {
+    return 'bg-red-100 text-red-700';
+  } else if (statusLower === 'terminée' || statusLower === 'completed' || statusLower === 'terminee') {
     return 'bg-blue-100 text-blue-700';
   }
   return 'bg-slate-100 text-slate-700';
+};
+
+const getBookingStatusLabel = (status: string): string => {
+  const statusLower = (status || '').toLowerCase().trim();
+  const statusMap: Record<string, string> = {
+    awaiting_payment: 'En attente de paiement',
+    awaitingpayment: 'En attente de paiement',
+    pending: 'En attente',
+    en_attente: 'En attente',
+    'en attente': 'En attente',
+    paid: 'Payée',
+    'payé': 'Payée',
+    paye: 'Payée',
+    confirmed: 'Confirmée',
+    confirmee: 'Confirmée',
+    'confirmée': 'Confirmée',
+    cancelled: 'Annulée',
+    canceled: 'Annulée',
+    annulee: 'Annulée',
+    'annulée': 'Annulée',
+    expired: 'Expirée',
+    expiree: 'Expirée',
+    'expirée': 'Expirée',
+    failed: 'Échouée',
+    echec: 'Échouée',
+    'échec': 'Échouée',
+    echoue: 'Échouée',
+    'échoué': 'Échouée',
+    completed: 'Terminée',
+    terminee: 'Terminée',
+    'terminée': 'Terminée',
+  };
+  return statusMap[statusLower] || status || 'Inconnu';
 };
 
 const handleImageError = (index: number) => {
