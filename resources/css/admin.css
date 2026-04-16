@@ -66,8 +66,7 @@
 *[style*="opacity:0"],
 .opacity-0,
 *[style*="display: none"],
-*[style*="display:none"],
-.hidden {
+*[style*="display:none"] {
     pointer-events: none !important;
 }
 
