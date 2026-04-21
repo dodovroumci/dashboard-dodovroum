@@ -24,33 +24,25 @@ abstract class BaseApiService
      */
     protected function getAuthToken(): ?string
     {
-        if (Auth::check()) {
-            $user = Auth::user();
-            $isAdmin = method_exists($user, 'isAdmin') 
-                ? $user->isAdmin() 
-                : ($user->role ?? 'owner') === 'admin';
+        $user = Auth::user();
+
+        if ($user && !$user->isAdmin()) {
+            // On vérifie toutes les cachettes possibles du token en session
+            $token = session('nest_jwt_token') ?? session('api_token') ?? $user->getApiToken();
             
-            // Admin connecté: token admin autorisé
-            if ($isAdmin) {
-                return $this->authService->getAccessToken();
-            }
-            
-            // Propriétaire connecté: utiliser uniquement son token personnel, sans fallback admin
-            if (method_exists($user, 'getApiToken')) {
-                $userToken = $user->getApiToken();
-                if ($userToken) {
-                    return $userToken;
-                }
+            if ($token) {
+                // Si on le trouve ici, c'est que la méthode $user->getApiToken() est mal configurée
+                return $token;
             }
 
-            Log::error('Propriétaire sans token API détecté', [
-                'user_id' => $user->id ?? $user->getAuthIdentifier(),
-                'all_session' => session()->all(),
+            // Si on arrive ici, c'est que le LoginController n'a RIEN enregistré du tout
+            Log::error("ÉCHEC TOTAL : Le token est introuvable en session.", [
+                'user_id' => $user->id,
+                'session_keys' => array_keys(session()->all())
             ]);
             return null;
         }
 
-        // Invité: fallback admin autorisé
         return $this->authService->getAccessToken();
     }
 
