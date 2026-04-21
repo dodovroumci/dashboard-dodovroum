@@ -126,9 +126,10 @@ class VehicleService extends BaseApiService
     public function create(array $data, bool $isAdmin = false): array
     {
         if (!$isAdmin) {
-            $userId = Auth::id();
+            $userId = (string) Auth::id();
             // Le backend NestJS pour les véhicules ne veut QUE ownerId
             $data['ownerId'] = $userId;
+            unset($data['proprietaireId']);
         }
 
         $dataForApi = VehicleMapper::toApi($data);
@@ -596,9 +597,9 @@ class VehicleService extends BaseApiService
             return $this->allMapped($filters);
         }
 
-        // Propriétaire : filtrer par proprietaireId
+        // Propriétaire : filtrer par ownerId (clé attendue côté véhicules)
         $ownerFilters = array_merge($filters, [
-            'proprietaireId' => $user->getAuthIdentifier(),
+            'ownerId' => $user->getAuthIdentifier(),
         ]);
 
         return $this->allMapped($ownerFilters);

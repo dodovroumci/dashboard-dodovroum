@@ -60,7 +60,7 @@ class OwnerVehicleController extends Controller
             }
             
             
-            // Utiliser le filtre proprietaireId directement dans l'API (comme AdminComboOfferController)
+            // Utiliser le filtre ownerId directement dans l'API des véhicules
             // L'API filtre côté serveur, ce qui est plus efficace
             $apiFilters = [];
             
@@ -68,10 +68,10 @@ class OwnerVehicleController extends Controller
             if ($proprietaireId !== null && $proprietaireId !== '') {
                 // Si c'est un nombre (string ou int), le convertir en int
                 if (is_numeric($proprietaireId)) {
-                    $apiFilters['proprietaireId'] = (int) $proprietaireId;
+                    $apiFilters['ownerId'] = (int) $proprietaireId;
                 } else {
                     // Sinon, garder tel quel (au cas où l'API accepterait des UUID)
-                    $apiFilters['proprietaireId'] = $proprietaireId;
+                    $apiFilters['ownerId'] = $proprietaireId;
                 }
             }
             
@@ -138,10 +138,10 @@ class OwnerVehicleController extends Controller
                 // Si le propriétaire correspond, ajouter le véhicule
                 // Comparer en string ET en int pour gérer les cas où l'un est string et l'autre int
                 $matches = false;
-                if ($proprietaireId && isset($apiFilters['proprietaireId'])) {
+                if ($proprietaireId && isset($apiFilters['ownerId'])) {
                     $matches = (
-                        (string) $proprietaireId === (string) $apiFilters['proprietaireId'] ||
-                        (int) $proprietaireId === (int) $apiFilters['proprietaireId']
+                        (string) $proprietaireId === (string) $apiFilters['ownerId'] ||
+                        (int) $proprietaireId === (int) $apiFilters['ownerId']
                     );
                 }
                 
@@ -168,7 +168,7 @@ class OwnerVehicleController extends Controller
             
             // Récupérer les réservations pour calculer les stats
             try {
-                $allBookings = $this->apiService->getBookings(['proprietaireId' => $apiFilters['proprietaireId']]);
+                $allBookings = $this->apiService->getBookings(['ownerId' => $apiFilters['ownerId']]);
                 
                 // Filtrer les réservations pour ce mois
                 foreach ($allBookings as $booking) {
@@ -178,8 +178,8 @@ class OwnerVehicleController extends Controller
                     }
                     
                     if ($bookingProprietaireId && (
-                        (string) $bookingProprietaireId === (string) $apiFilters['proprietaireId'] ||
-                        (is_numeric($bookingProprietaireId) && is_numeric($apiFilters['proprietaireId']) && (int) $bookingProprietaireId === (int) $apiFilters['proprietaireId'])
+                        (string) $bookingProprietaireId === (string) $apiFilters['ownerId'] ||
+                        (is_numeric($bookingProprietaireId) && is_numeric($apiFilters['ownerId']) && (int) $bookingProprietaireId === (int) $apiFilters['ownerId'])
                     )) {
                         $totalBookings++;
                         
