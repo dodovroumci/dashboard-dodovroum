@@ -123,8 +123,20 @@ class VehicleService extends BaseApiService
     /**
      * Créer un nouveau véhicule
      */
-    public function create(array $data): array
+    public function create(array $data, bool $isAdmin = false): array
     {
+        // Mode propriétaire: imposer l'identité connectée et bloquer le fallback admin.
+        if (!$isAdmin) {
+            $connectedUserId = Auth::id();
+            if (empty($connectedUserId)) {
+                throw new \Exception("Erreur : utilisateur non authentifié, impossible d'assigner le propriétaire du véhicule.");
+            }
+
+            $data['ownerId'] = $connectedUserId;
+            $data['proprietaireId'] = $connectedUserId;
+            $data['user_id'] = $connectedUserId;
+        }
+
         // 🛡️ BLINDAGE : Vérifier que proprietaireId est valide avant toute opération
         // Si c'est l'ID "1" (admin par défaut) ou vide, on stoppe tout
         $proprietaireId = $data['proprietaireId'] ?? null;
@@ -330,7 +342,7 @@ class VehicleService extends BaseApiService
         ]);
         
         try {
-            $result = $this->post('vehicles', $dataForApi);
+            $result = $this->post('vehicles', $dataForApi, !$isAdmin);
             
             // Vérifier si l'API a bien utilisé le ownerId envoyé
             $createdVehicle = $result[0] ?? null;
