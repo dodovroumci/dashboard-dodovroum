@@ -369,54 +369,10 @@ class OwnerVehicleController extends Controller
 
         $validated['proprietaireId'] = $proprietaireId;
 
-        try {
-            $this->vehicleService->create($validated);
-            
-            return redirect()->route('owner.vehicles.index')
-                ->with('success', 'Véhicule créé avec succès');
-        } catch (DodoVroumApiException $e) {
-            if ($e->getMessage() === 'Session expirée ou authentification propriétaire requise.') {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+        $this->vehicleService->create($validated);
 
-                return redirect()->route('login')
-                    ->with('error', 'Votre session a expiré. Veuillez vous reconnecter pour valider l\'ajout du véhicule.');
-            }
-
-            Log::error('Erreur API lors de la création du véhicule', [
-                'error' => $e->getMessage(),
-                'context' => $e->getContext(),
-            ]);
-            
-            $errorMessage = $e->getMessage() ?: 'Erreur lors de la création du véhicule';
-            
-            return back()
-                ->withErrors(['error' => $errorMessage])
-                ->with('error', $errorMessage)
-                ->withInput();
-        } catch (\Exception $e) {
-            if ($e->getMessage() === 'Session expirée ou authentification propriétaire requise.') {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('login')
-                    ->with('error', 'Votre session a expiré. Veuillez vous reconnecter pour valider l\'ajout du véhicule.');
-            }
-
-            Log::error('Erreur création véhicule', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
-            $errorMessage = 'Erreur lors de la création du véhicule: ' . $e->getMessage();
-            
-            return back()
-                ->withErrors(['error' => $errorMessage])
-                ->with('error', $errorMessage)
-                ->withInput();
-        }
+        return redirect()->route('owner.vehicles.index')
+            ->with('success', 'Véhicule créé avec succès');
     }
 
     /**

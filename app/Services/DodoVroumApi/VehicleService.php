@@ -125,293 +125,33 @@ class VehicleService extends BaseApiService
      */
     public function create(array $data, bool $isAdmin = false): array
     {
-        // Mode propriétaire: imposer l'identité connectée et bloquer le fallback admin.
+        if (isset($data['description']) && is_string($data['description']) && mb_strlen($data['description']) > 500) {
+            $data['description'] = mb_substr($data['description'], 0, 500);
+        }
+
         if (!$isAdmin) {
-            $connectedUserId = Auth::id();
-            if (empty($connectedUserId)) {
-                throw new \Exception("Erreur : utilisateur non authentifié, impossible d'assigner le propriétaire du véhicule.");
-            }
-
-            $data['ownerId'] = $connectedUserId;
-            $data['proprietaireId'] = $connectedUserId;
-            $data['user_id'] = $connectedUserId;
-        }
-
-        // 🛡️ BLINDAGE : Vérifier que proprietaireId est valide avant toute opération
-        // Si c'est l'ID "1" (admin par défaut) ou vide, on stoppe tout
-        $proprietaireId = $data['proprietaireId'] ?? null;
-        
-        if (empty($proprietaireId) || $proprietaireId === "1" || $proprietaireId === 1) {
-            $errorMessage = "Erreur : Aucun propriétaire valide sélectionné. Veuillez sélectionner un propriétaire dans le formulaire.";
-            Log::error('Blindage VehicleService::create - proprietaireId invalide', [
-                'proprietaireId_received' => $proprietaireId,
-                'proprietaireId_type' => gettype($proprietaireId),
-                'data_keys' => array_keys($data),
-                'error' => $errorMessage,
-            ]);
-            throw new \Exception($errorMessage);
-        }
-        
-        Log::info('Blindage VehicleService::create - proprietaireId valide', [
-            'proprietaireId' => $proprietaireId,
-            'proprietaireId_type' => gettype($proprietaireId),
-        ]);
-        
-        // Tronquer la description à 500 caractères avant le mapping
-        if (isset($data['description']) && is_string($data['description'])) {
-            $originalLength = mb_strlen($data['description']);
-            if ($originalLength > 500) {
-                Log::warning('Description trop longue pour véhicule, troncature appliquée', [
-                    'original_length' => $originalLength,
-                    'truncated_length' => 500,
-                ]);
-                $data['description'] = mb_substr($data['description'], 0, 500);
+            $authId = Auth::id();
+            if ($authId) {
+                $data['ownerId'] = (string) $authId;
+                $data['proprietaireId'] = (string) $authId;
             }
         }
-        
+
         $dataForApi = VehicleMapper::toApi($data);
-        
-        // Double vérification après le mapping
+
+        if (!$isAdmin) {
+            $authId = Auth::id();
+            if ($authId) {
+                $dataForApi['ownerId'] = (string) $authId;
+                $dataForApi['proprietaireId'] = (string) $authId;
+            }
+        }
+
         if (isset($dataForApi['description']) && is_string($dataForApi['description']) && mb_strlen($dataForApi['description']) > 500) {
-            Log::warning('Description encore trop longue après mapping véhicule, troncature finale', [
-                'length' => mb_strlen($dataForApi['description']),
-            ]);
             $dataForApi['description'] = mb_substr($dataForApi['description'], 0, 500);
         }
-        
-        // Gestion de proprietaireId/ownerId selon le contexte
-        // Si l'utilisateur est admin ET qu'un proprietaireId est fourni, on l'envoie à l'API
-        // Sinon, l'API détermine le propriétaire depuis le token
-        $user = Auth::user();
-        
-        // Détection admin insensible à la casse (admin, ADMIN, Admin)
-        $userRole = strtolower($user->role ?? 'owner');
-        $isAdmin = $user && (
-            (method_exists($user, 'isAdmin') && $user->isAdmin()) ||
-            $userRole === 'admin' ||
-            ($user->is_admin ?? false)
-        );
-        
-        Log::debug('Détection admin pour création véhicule', [
-            'user_id' => $user->getAuthIdentifier() ?? null,
-            'user_role' => $user->role ?? 'unknown',
-            'user_role_lowercase' => $userRole,
-            'isAdmin_method' => method_exists($user, 'isAdmin') ? $user->isAdmin() : null,
-            'isAdmin_final' => $isAdmin,
-        ]);
-        
-        if ($isAdmin && isset($data['proprietaireId']) && !empty($data['proprietaireId'])) {
-            // 🛡️ BLINDAGE FINAL : Vérifier une dernière fois que ce n'est pas l'ID "1"
-            if ($data['proprietaireId'] === "1" || $data['proprietaireId'] === 1) {
-                $errorMessage = "Erreur : L'ID propriétaire '1' n'est pas autorisé. Veuillez sélectionner un propriétaire valide.";
-                Log::error('Blindage VehicleService::create - Tentative d\'envoi de l\'ID "1" bloquée', [
-                    'proprietaireId' => $data['proprietaireId'],
-                    'isAdmin' => $isAdmin,
-                    'error' => $errorMessage,
-                ]);
-                throw new \Exception($errorMessage);
-            }
-            
-            // 🛡️ VALIDATION : Vérifier que le propriétaire existe bien dans l'API
-            try {
-                $userService = app(UserService::class);
-                $users = $userService->getOwners();
-                $ownerExists = false;
-                $ownerId = (string) $data['proprietaireId'];
-                
-                foreach ($users as $user) {
-                    $userId = (string) ($user['id'] ?? $user['_id'] ?? null);
-                    if ($userId === $ownerId) {
-                        $ownerExists = true;
-                        Log::info('Propriétaire validé dans l\'API', [
-                            'proprietaireId' => $ownerId,
-                            'user_found' => true,
-                            'user_role' => $user['role'] ?? 'unknown',
-                        ]);
-                        break;
-                    }
-                }
-                
-                if (!$ownerExists) {
-                    $errorMessage = "Erreur : Le propriétaire sélectionné n'existe pas dans l'API. Veuillez sélectionner un propriétaire valide.";
-                    Log::error('Blindage VehicleService::create - Propriétaire non trouvé dans l\'API', [
-                        'proprietaireId' => $ownerId,
-                        'users_checked' => count($users),
-                        'error' => $errorMessage,
-                    ]);
-                    throw new \Exception($errorMessage);
-                }
-            } catch (\Exception $e) {
-                // Si c'est déjà notre exception, la relancer
-                if (strpos($e->getMessage(), 'propriétaire') !== false) {
-                    throw $e;
-                }
-                // Sinon, logger l'erreur mais continuer (l'API validera de toute façon)
-                Log::warning('Erreur lors de la validation du propriétaire, on continue quand même', [
-                    'proprietaireId' => $data['proprietaireId'],
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            
-            // Admin crée un véhicule pour un autre propriétaire : envoyer ownerId à l'API
-            // L'API NestJS attend ownerId (pas proprietaireId) pour faire le connect
-            $dataForApi['ownerId'] = $data['proprietaireId'];
-            Log::info('Admin crée véhicule pour propriétaire spécifique', [
-                'proprietaireId' => $data['proprietaireId'],
-                'ownerId_sent_to_api' => $dataForApi['ownerId'],
-            ]);
-        } else {
-            // Propriétaire normal ou admin sans proprietaireId spécifié : l'API détermine depuis le token
-            unset($dataForApi['ownerId']);
-            unset($dataForApi['proprietaireId']);
-            unset($dataForApi['owner_id']);
-            unset($dataForApi['proprietaire_id']);
-            
-            if (isset($data['proprietaireId']) && !empty($data['proprietaireId'])) {
-                Log::info('proprietaireId fourni mais utilisateur non-admin, l\'API le détermine depuis le token', [
-                    'proprietaireId_requested' => $data['proprietaireId'],
-                    'isAdmin' => $isAdmin,
-                ]);
-            }
-        }
-        
-        Log::debug('Données après gestion proprietaireId', [
-            'data_keys' => array_keys($dataForApi),
-            'has_ownerId' => isset($dataForApi['ownerId']),
-            'has_proprietaireId' => isset($dataForApi['proprietaireId']),
-        ]);
-        
-        // Supprimer les champs obsolètes qui ne doivent pas être envoyés à l'API
-        // ⚠️ NE PAS supprimer 'seats' car l'API NestJS l'attend dans le DTO de validation
-        unset($dataForApi['places']);
-        unset($dataForApi['capacity']); // capacity n'est pas attendu par le DTO, seulement seats
-        unset($dataForApi['fuel']); // fuel est mappé vers fuelType
-        
-        // Filtrer les images vides
-        if (isset($dataForApi['images']) && is_array($dataForApi['images'])) {
-            $dataForApi['images'] = array_filter($dataForApi['images'], function($img) {
-                return !empty(trim($img));
-            });
-            $dataForApi['images'] = array_values($dataForApi['images']);
-        }
-        
-        // Filtrer les features vides
-        if (isset($dataForApi['features']) && is_array($dataForApi['features'])) {
-            $dataForApi['features'] = array_filter($dataForApi['features'], function($feature) {
-                return !empty(trim($feature));
-            });
-            $dataForApi['features'] = array_values($dataForApi['features']);
-        }
-        
-        // Filtrer les valeurs null (sauf pour les champs qui peuvent être null)
-        // ⚠️ IMPORTANT : fuelType n'est plus dans allowedNullFields car l'API NestJS exige une chaîne non vide
-        // Si fuelType est null ou vide, il sera supprimé du payload par le mapper
-        $allowedNullFields = ['color', 'transmission', 'mileage', 'description', 'images', 'features'];
-        $dataForApi = array_filter($dataForApi, function($value, $key) use ($allowedNullFields) {
-            // Garder les champs null autorisés et les tableaux vides
-            if (in_array($key, $allowedNullFields)) {
-                return true;
-            }
-            // Filtrer les valeurs null pour les autres champs
-            return $value !== null;
-        }, ARRAY_FILTER_USE_BOTH);
-        
-        // 🛡️ Debugging : Vérifier les types dans les logs Laravel avant l'envoi
-        Log::debug('Payload formaté pour NestJS (create)', [
-            'payload' => $dataForApi,
-            'types_check' => [
-                'year' => isset($dataForApi['year']) ? gettype($dataForApi['year']) . ' (' . $dataForApi['year'] . ')' : 'not_set',
-                'seats' => isset($dataForApi['seats']) ? gettype($dataForApi['seats']) . ' (' . $dataForApi['seats'] . ')' : 'not_set',
-                'pricePerDay' => isset($dataForApi['pricePerDay']) ? gettype($dataForApi['pricePerDay']) . ' (' . $dataForApi['pricePerDay'] . ')' : 'not_set',
-                'mileage' => isset($dataForApi['mileage']) ? gettype($dataForApi['mileage']) . ' (' . $dataForApi['mileage'] . ')' : 'not_set',
-                'isActive' => isset($dataForApi['isActive']) ? gettype($dataForApi['isActive']) . ' (' . ($dataForApi['isActive'] ? 'true' : 'false') . ')' : 'not_set',
-                'licensePlate' => isset($dataForApi['licensePlate']) ? gettype($dataForApi['licensePlate']) . ' (' . $dataForApi['licensePlate'] . ')' : 'not_set',
-            ],
-        ]);
-        
-        Log::info('Création de véhicule - données envoyées à l\'API', [
-            'data_keys' => array_keys($dataForApi),
-            'brand' => $dataForApi['brand'] ?? null,
-            'model' => $dataForApi['model'] ?? null,
-            'type' => $dataForApi['type'] ?? null,
-            'seats' => $dataForApi['seats'] ?? null,
-            'licensePlate' => $dataForApi['licensePlate'] ?? null,
-            'pricePerDay' => $dataForApi['pricePerDay'] ?? null,
-            'year' => $dataForApi['year'] ?? null,
-            'has_ownerId' => isset($dataForApi['ownerId']),
-        ]);
-        
-        try {
-            $result = $this->post('vehicles', $dataForApi, !$isAdmin);
-            
-            // Vérifier si l'API a bien utilisé le ownerId envoyé
-            $createdVehicle = $result[0] ?? null;
-            
-            // Extraire le ownerId retourné (peut être dans owner.id, ownerId, owner_id, ou owner directement)
-            $returnedOwnerId = null;
-            if (isset($createdVehicle['owner']) && is_array($createdVehicle['owner'])) {
-                $returnedOwnerId = $createdVehicle['owner']['id'] ?? $createdVehicle['owner']['_id'] ?? null;
-            } elseif (isset($createdVehicle['owner']) && is_string($createdVehicle['owner'])) {
-                $returnedOwnerId = $createdVehicle['owner'];
-            } else {
-                $returnedOwnerId = $createdVehicle['ownerId'] ?? $createdVehicle['owner_id'] ?? null;
-            }
-            
-            $sentOwnerId = $dataForApi['ownerId'] ?? null;
-            
-            // Vérification de cohérence : l'API NestJS devrait maintenant respecter le ownerId envoyé
-            $ownerIdMatch = ($sentOwnerId && $returnedOwnerId && (string) $sentOwnerId === (string) $returnedOwnerId);
-            
-            Log::info('Véhicule créé avec succès', [
-                'vehicleId' => $createdVehicle['id'] ?? null,
-                'ownerId_sent' => $sentOwnerId,
-                'ownerId_returned' => $returnedOwnerId,
-                'ownerId_match' => $ownerIdMatch,
-                'isAdmin' => $isAdmin,
-                'correction_needed' => !$ownerIdMatch && $isAdmin && $sentOwnerId,
-            ]);
-            
-            // 🛡️ FAIL-SAFE : Correction automatique uniquement si l'API a ignoré le ownerId
-            // Normalement, avec le correctif NestJS, ce cas ne devrait plus se produire
-            if ($isAdmin && $sentOwnerId && !$ownerIdMatch) {
-                Log::warning('⚠️ L\'API a utilisé un ownerId différent de celui envoyé - Correction automatique (fail-safe)', [
-                    'ownerId_sent' => $sentOwnerId,
-                    'ownerId_returned' => $returnedOwnerId,
-                    'vehicleId' => $createdVehicle['id'] ?? null,
-                    'note' => 'Ce cas ne devrait plus se produire avec le correctif NestJS. Vérifier la logique côté API.',
-                ]);
-                
-                // Tenter de mettre à jour le véhicule avec le bon ownerId
-                try {
-                    $updateData = ['ownerId' => $sentOwnerId];
-                    $this->patch("vehicles/{$createdVehicle['id']}", $updateData);
-                    Log::info('✅ Véhicule corrigé avec le bon ownerId (fail-safe activé)', [
-                        'vehicleId' => $createdVehicle['id'] ?? null,
-                        'ownerId_corrected' => $sentOwnerId,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('❌ Impossible de corriger le ownerId du véhicule (fail-safe échoué)', [
-                        'vehicleId' => $createdVehicle['id'] ?? null,
-                        'error' => $e->getMessage(),
-                    ]);
-                    // Ne pas faire échouer la création, mais logger l'erreur
-                }
-            } elseif ($isAdmin && $sentOwnerId && $ownerIdMatch) {
-                Log::info('✅ POST réussi du premier coup - ownerId correct dès la création', [
-                    'vehicleId' => $createdVehicle['id'] ?? null,
-                    'ownerId' => $sentOwnerId,
-                ]);
-            }
-            
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la création du véhicule', [
-                'error' => $e->getMessage(),
-                'data_sent' => $dataForApi,
-                'original_data' => $data,
-            ]);
-            throw $e;
-        }
+
+        return $this->post('vehicles', $dataForApi, false);
     }
 
     /**

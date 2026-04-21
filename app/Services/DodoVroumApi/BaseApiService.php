@@ -22,50 +22,34 @@ abstract class BaseApiService
     /**
      * Obtenir le token d'authentification (utilisateur connecté ou admin)
      */
-    protected function getAuthToken(bool $forceOwner = false): ?string
+    protected function getAuthToken(): ?string
     {
-        $userToken = $this->getUserApiToken();
-        if ($userToken) {
-            return $userToken;
-        }
-
-        if ($forceOwner) {
-            Log::warning('Mode strict propriétaire: token utilisateur requis mais indisponible', [
-                'auth_check' => Auth::check(),
-                'user_id' => Auth::check() ? Auth::id() : null,
-            ]);
-            throw DodoVroumApiException::authenticationFailed('Session expirée ou authentification propriétaire requise.');
-        }
-
-        // Par défaut, utiliser le token admin (comportement historique)
-        return $this->getAdminApiToken();
-    }
-
-    /**
-     * Obtenir le token API de l'utilisateur connecté si disponible
-     */
-    protected function getUserApiToken(): ?string
-    {
-        if (!Auth::check()) {
-            return null;
-        }
-
-        $user = Auth::user();
-        if ($user && method_exists($user, 'getApiToken')) {
-            $userToken = $user->getApiToken();
-            if (!empty($userToken)) {
-                return $userToken;
+        // Pour les admins, toujours utiliser le token admin pour avoir accès à toutes les données
+        if (Auth::check()) {
+            $user = Auth::user();
+            $isAdmin = method_exists($user, 'isAdmin') 
+                ? $user->isAdmin() 
+                : ($user->role ?? 'owner') === 'admin';
+            
+            // Si c'est un admin, utiliser le token admin pour avoir accès à toutes les données
+            if ($isAdmin) {
+                return $this->authService->getAccessToken();
+            }
+            
+            // Pour les propriétaires, utiliser leur token personnel
+            if (method_exists($user, 'getApiToken')) {
+                $userToken = $user->getApiToken();
+                if ($userToken) {
+                    return $userToken;
+                } else {
+                    Log::warning('Token utilisateur non disponible, utilisation du token admin', [
+                        'user_id' => $user->getAuthIdentifier(),
+                    ]);
+                }
             }
         }
 
-        return null;
-    }
-
-    /**
-     * Obtenir le token admin fallback
-     */
-    protected function getAdminApiToken(): ?string
-    {
+        // Par défaut, utiliser le token admin
         return $this->authService->getAccessToken();
     }
 
@@ -272,9 +256,9 @@ abstract class BaseApiService
     /**
      * Faire une requête POST à l'API avec authentification
      */
-    protected function post(string $endpoint, array $data = [], bool $forceOwner = false): array
+    protected function post(string $endpoint, array $data = [], bool $strictOwnerMode = true): array
     {
-        $token = $this->getAuthToken($forceOwner);
+        $token = $this->getAuthToken();
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification', ['endpoint' => $endpoint]);

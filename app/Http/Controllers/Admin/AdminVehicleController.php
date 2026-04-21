@@ -566,7 +566,7 @@ class AdminVehicleController extends Controller
                 'proprietaireId' => $validated['proprietaireId'] ?? null,
             ]);
             
-            $this->vehicleService->create($validated, isAdmin: true);
+            $this->vehicleService->create($validated);
             
             return redirect()->route('admin.vehicles.index')
                 ->with('success', 'Véhicule créé avec succès');
