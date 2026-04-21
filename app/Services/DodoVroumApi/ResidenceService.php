@@ -334,9 +334,9 @@ class ResidenceService extends BaseApiService
     /**
      * Supprimer une résidence
      */
-    public function delete(string $id, bool $forceOwner = false): bool
+    public function delete(string $id): bool
     {
-        return parent::delete("residences/{$id}", $forceOwner);
+        return parent::delete("residences/{$id}");
     }
 
     /**

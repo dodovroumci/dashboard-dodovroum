@@ -188,8 +188,6 @@ class VehicleService extends BaseApiService
             'isAdmin_final' => $isAdmin,
         ]);
         
-        $isOwnerContext = !$isAdmin;
-
         if ($isAdmin && isset($data['proprietaireId']) && !empty($data['proprietaireId'])) {
             // 🛡️ BLINDAGE FINAL : Vérifier une dernière fois que ce n'est pas l'ID "1"
             if ($data['proprietaireId'] === "1" || $data['proprietaireId'] === 1) {
@@ -246,21 +244,22 @@ class VehicleService extends BaseApiService
             // Admin crée un véhicule pour un autre propriétaire : envoyer ownerId à l'API
             // L'API NestJS attend ownerId (pas proprietaireId) pour faire le connect
             $dataForApi['ownerId'] = $data['proprietaireId'];
-            $dataForApi['proprietaireId'] = $data['proprietaireId'];
             Log::info('Admin crée véhicule pour propriétaire spécifique', [
                 'proprietaireId' => $data['proprietaireId'],
                 'ownerId_sent_to_api' => $dataForApi['ownerId'],
             ]);
         } else {
-            // Contexte propriétaire: payload explicite + token propriétaire strict (sans fallback admin)
+            // Propriétaire normal ou admin sans proprietaireId spécifié : l'API détermine depuis le token
+            unset($dataForApi['ownerId']);
+            unset($dataForApi['proprietaireId']);
+            unset($dataForApi['owner_id']);
+            unset($dataForApi['proprietaire_id']);
+            
             if (isset($data['proprietaireId']) && !empty($data['proprietaireId'])) {
-                $dataForApi['ownerId'] = $data['proprietaireId'];
-                $dataForApi['proprietaireId'] = $data['proprietaireId'];
-            } else {
-                unset($dataForApi['ownerId']);
-                unset($dataForApi['proprietaireId']);
-                unset($dataForApi['owner_id']);
-                unset($dataForApi['proprietaire_id']);
+                Log::info('proprietaireId fourni mais utilisateur non-admin, l\'API le détermine depuis le token', [
+                    'proprietaireId_requested' => $data['proprietaireId'],
+                    'isAdmin' => $isAdmin,
+                ]);
             }
         }
         
@@ -331,7 +330,7 @@ class VehicleService extends BaseApiService
         ]);
         
         try {
-            $result = $this->post('vehicles', $dataForApi, $isOwnerContext);
+            $result = $this->post('vehicles', $dataForApi);
             
             // Vérifier si l'API a bien utilisé le ownerId envoyé
             $createdVehicle = $result[0] ?? null;
@@ -407,7 +406,7 @@ class VehicleService extends BaseApiService
      * Mettre à jour un véhicule
      * Utilise la même logique que create() pour garantir la cohérence
      */
-    public function update(string $id, array $data, ?bool $isAdmin = null): array
+    public function update(string $id, array $data): array
     {
         Log::info('🔵 VehicleService::update appelé', [
             'vehicle_id' => $id,
@@ -444,13 +443,11 @@ class VehicleService extends BaseApiService
         // Pour éviter l'erreur 403, on doit récupérer le propriétaire actuel du véhicule
         // et l'envoyer dans la requête si c'est un admin qui modifie
         $user = Auth::user();
-        $detectedIsAdmin = $user && (
+        $isAdmin = $user && (
             (method_exists($user, 'isAdmin') && $user->isAdmin()) ||
             ($user->role ?? 'owner') === 'admin' ||
             ($user->is_admin ?? false)
         );
-        $isAdmin = $isAdmin ?? $detectedIsAdmin;
-        $isOwnerContext = !$isAdmin;
         
         // Récupérer le véhicule actuel pour obtenir son propriétaire
         $currentVehicle = null;
@@ -493,15 +490,6 @@ class VehicleService extends BaseApiService
             'isAdmin' => $isAdmin,
             'proprietaireId_in_data' => $data['proprietaireId'] ?? null,
         ]);
-
-        // Contexte propriétaire: on force l'ownerId pour expliciter l'intention métier.
-        if ($isOwnerContext) {
-            $ownerId = $data['proprietaireId'] ?? $data['ownerId'] ?? ($user?->getAuthIdentifier());
-            if ($ownerId) {
-                $dataForApi['ownerId'] = $ownerId;
-                $dataForApi['proprietaireId'] = $ownerId;
-            }
-        }
         
         // ⚠️ IMPORTANT : Pour l'update, ne JAMAIS envoyer ownerId dans le payload
         // L'API NestJS vérifie que le sub du JWT correspond au ownerId du véhicule
@@ -568,12 +556,10 @@ class VehicleService extends BaseApiService
         // en vérifiant le rôle dans le JWT plutôt que seulement le sub
         
         // Supprimer ownerId du payload pour éviter l'erreur 403
-        if ($isAdmin) {
-            unset($dataForApi['ownerId']);
-            unset($dataForApi['proprietaireId']);
-            unset($dataForApi['owner_id']);
-            unset($dataForApi['proprietaire_id']);
-        }
+        unset($dataForApi['ownerId']);
+        unset($dataForApi['proprietaireId']);
+        unset($dataForApi['owner_id']);
+        unset($dataForApi['proprietaire_id']);
         
         Log::info('Mise à jour véhicule - ownerId non envoyé (l\'API utilise le sub du JWT)', [
             'vehicle_id' => $id,
@@ -646,7 +632,7 @@ class VehicleService extends BaseApiService
         ]);
         
         try {
-            $result = $this->patch("vehicles/{$id}", $dataForApi, $isOwnerContext);
+            $result = $this->patch("vehicles/{$id}", $dataForApi);
             
             // 🔍 DEBUG : Vérifier si le title est bien retourné par l'API
             // La réponse peut être un objet ou un tableau selon la normalisation
@@ -686,7 +672,7 @@ class VehicleService extends BaseApiService
     /**
      * Supprimer un véhicule
      */
-    public function delete(string $id, ?bool $isAdmin = null): bool
+    public function delete(string $id): bool
     {
         Log::info('VehicleService::delete appelé', [
             'vehicle_id' => $id,
@@ -694,16 +680,7 @@ class VehicleService extends BaseApiService
         ]);
         
         try {
-            $user = Auth::user();
-            $detectedIsAdmin = $user && (
-                (method_exists($user, 'isAdmin') && $user->isAdmin()) ||
-                ($user->role ?? 'owner') === 'admin' ||
-                ($user->is_admin ?? false)
-            );
-            $isAdmin = $isAdmin ?? $detectedIsAdmin;
-            $isOwnerContext = !$isAdmin;
-
-            $result = parent::delete("vehicles/{$id}", $isOwnerContext);
+            $result = parent::delete("vehicles/{$id}");
             
             Log::info('VehicleService::delete - Résultat', [
                 'vehicle_id' => $id,
