@@ -24,32 +24,32 @@ abstract class BaseApiService
      */
     protected function getAuthToken(): ?string
     {
-        // Pour les admins, toujours utiliser le token admin pour avoir accès à toutes les données
         if (Auth::check()) {
             $user = Auth::user();
             $isAdmin = method_exists($user, 'isAdmin') 
                 ? $user->isAdmin() 
                 : ($user->role ?? 'owner') === 'admin';
             
-            // Si c'est un admin, utiliser le token admin pour avoir accès à toutes les données
+            // Admin connecté: token admin autorisé
             if ($isAdmin) {
                 return $this->authService->getAccessToken();
             }
             
-            // Pour les propriétaires, utiliser leur token personnel
+            // Propriétaire connecté: utiliser uniquement son token personnel, sans fallback admin
             if (method_exists($user, 'getApiToken')) {
                 $userToken = $user->getApiToken();
                 if ($userToken) {
                     return $userToken;
-                } else {
-                    Log::warning('Token utilisateur non disponible, utilisation du token admin', [
-                        'user_id' => $user->getAuthIdentifier(),
-                    ]);
                 }
             }
+
+            Log::error('Propriétaire sans token API détecté', [
+                'user_id' => $user->id ?? $user->getAuthIdentifier(),
+            ]);
+            return null;
         }
 
-        // Par défaut, utiliser le token admin
+        // Invité: fallback admin autorisé
         return $this->authService->getAccessToken();
     }
 

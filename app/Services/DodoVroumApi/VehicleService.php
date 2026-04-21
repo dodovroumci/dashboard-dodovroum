@@ -133,9 +133,20 @@ class VehicleService extends BaseApiService
         }
 
         $dataForApi = VehicleMapper::toApi($data);
+
+        // Réinjecter ownerId après mapping pour garantir sa présence finale
+        if (!$isAdmin) {
+            $dataForApi['ownerId'] = (string) Auth::id();
+        }
         
         // On s'assure une dernière fois que proprietaireId n'est pas dans le payload final
         unset($dataForApi['proprietaireId']);
+
+        Log::info('Payload final création véhicule envoyé à NestJS', [
+            'payload' => $dataForApi,
+            'has_ownerId' => isset($dataForApi['ownerId']),
+            'ownerId' => $dataForApi['ownerId'] ?? null,
+        ]);
 
         return $this->post('vehicles', $dataForApi, false);
     }
