@@ -125,31 +125,16 @@ class VehicleService extends BaseApiService
      */
     public function create(array $data, bool $isAdmin = false): array
     {
-        if (isset($data['description']) && is_string($data['description']) && mb_strlen($data['description']) > 500) {
-            $data['description'] = mb_substr($data['description'], 0, 500);
-        }
-
         if (!$isAdmin) {
-            $authId = Auth::id();
-            if ($authId) {
-                $data['ownerId'] = (string) $authId;
-                $data['proprietaireId'] = (string) $authId;
-            }
+            $userId = Auth::id();
+            // Le backend NestJS pour les véhicules ne veut QUE ownerId
+            $data['ownerId'] = $userId;
         }
 
         $dataForApi = VehicleMapper::toApi($data);
-
-        if (!$isAdmin) {
-            $authId = Auth::id();
-            if ($authId) {
-                $dataForApi['ownerId'] = (string) $authId;
-                $dataForApi['proprietaireId'] = (string) $authId;
-            }
-        }
-
-        if (isset($dataForApi['description']) && is_string($dataForApi['description']) && mb_strlen($dataForApi['description']) > 500) {
-            $dataForApi['description'] = mb_substr($dataForApi['description'], 0, 500);
-        }
+        
+        // On s'assure une dernière fois que proprietaireId n'est pas dans le payload final
+        unset($dataForApi['proprietaireId']);
 
         return $this->post('vehicles', $dataForApi, false);
     }
