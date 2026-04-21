@@ -22,7 +22,7 @@ abstract class BaseApiService
     /**
      * Obtenir le token d'authentification (utilisateur connecté ou admin)
      */
-    protected function getAuthToken(): ?string
+    protected function getAuthToken(bool $forceOwner = false): ?string
     {
         // Pour les admins, toujours utiliser le token admin pour avoir accès à toutes les données
         if (Auth::check()) {
@@ -41,12 +41,26 @@ abstract class BaseApiService
                 $userToken = $user->getApiToken();
                 if ($userToken) {
                     return $userToken;
+                }
+
+                if ($forceOwner) {
+                    Log::error('Action propriétaire bloquée: token utilisateur absent', [
+                        'user_id' => $user->getAuthIdentifier(),
+                    ]);
+                    throw DodoVroumApiException::authenticationFailed('Authentification propriétaire requise pour cette action.');
                 } else {
                     Log::warning('Token utilisateur non disponible, utilisation du token admin', [
                         'user_id' => $user->getAuthIdentifier(),
                     ]);
                 }
             }
+        }
+
+        if ($forceOwner) {
+            Log::error('Action propriétaire bloquée: utilisateur non authentifié', [
+                'auth_check' => Auth::check(),
+            ]);
+            throw DodoVroumApiException::authenticationFailed('Authentification propriétaire requise pour cette action.');
         }
 
         // Par défaut, utiliser le token admin
@@ -256,9 +270,9 @@ abstract class BaseApiService
     /**
      * Faire une requête POST à l'API avec authentification
      */
-    protected function post(string $endpoint, array $data = []): array
+    protected function post(string $endpoint, array $data = [], bool $forceOwner = false): array
     {
-        $token = $this->getAuthToken();
+        $token = $this->getAuthToken($forceOwner);
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification', ['endpoint' => $endpoint]);
@@ -405,9 +419,9 @@ abstract class BaseApiService
     /**
      * Faire une requête PATCH à l'API avec authentification
      */
-    protected function patch(string $endpoint, array $data = []): array
+    protected function patch(string $endpoint, array $data = [], bool $forceOwner = false): array
     {
-        $token = $this->getAuthToken();
+        $token = $this->getAuthToken($forceOwner);
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification', ['endpoint' => $endpoint]);
@@ -497,9 +511,9 @@ abstract class BaseApiService
     /**
      * Faire une requête DELETE à l'API avec authentification
      */
-    protected function delete(string $endpoint): bool
+    protected function delete(string $endpoint, bool $forceOwner = false): bool
     {
-        $token = $this->getAuthToken();
+        $token = $this->getAuthToken($forceOwner);
 
         if (!$token) {
             Log::error('Impossible d\'obtenir le token d\'authentification', ['endpoint' => $endpoint]);
