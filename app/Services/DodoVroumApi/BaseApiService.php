@@ -45,6 +45,7 @@ abstract class BaseApiService
 
             Log::error('Propriétaire sans token API détecté', [
                 'user_id' => $user->id ?? $user->getAuthIdentifier(),
+                'all_session' => session()->all(),
             ]);
             return null;
         }

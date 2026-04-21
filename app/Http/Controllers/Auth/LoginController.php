@@ -81,6 +81,8 @@ class LoginController extends Controller
         if (isset($userData['token'])) {
             Session::put('api_token', $userData['token']);
             Session::put('nest_jwt_token', $userData['token']);
+            // Forcer la persistance immédiate des tokens en session
+            Session::save();
         }
         
         // Stocker les données utilisateur en session (incluant le token)
