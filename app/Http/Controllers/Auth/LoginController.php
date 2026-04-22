@@ -48,107 +48,47 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
-        // Authentifier via l'API
         $userData = $this->apiAuthService->authenticate(
             $credentials['email'],
             $credentials['password']
         );
 
         if (!$userData) {
-            // Message d'erreur plus clair
-            $errorMessage = 'Les identifiants fournis ne correspondent pas à nos enregistrements.';
-            $errorMessage .= ' Veuillez vérifier votre email et votre mot de passe.';
-            
-            \Illuminate\Support\Facades\Log::warning('Échec de connexion', [
-                'email' => $credentials['email'],
-                'suggestion' => 'Vérifiez que le compte existe et que le mot de passe est correct',
-            ]);
-            
-            return back()->withErrors([
-                'email' => $errorMessage,
-            ])->onlyInput('email');
+            return back()->withErrors(['email' => 'Identifiants incorrects.'])->onlyInput('email');
         }
 
-        // Log pour debug
-        \Illuminate\Support\Facades\Log::info('Authentification réussie via API', [
-            'email' => $userData['email'] ?? null,
-            'role' => $userData['role'] ?? null,
-            'id' => $userData['id'] ?? null,
-            'admin_email_config' => config('services.dodovroum.admin_email'),
-        ]);
-
-        // S'assurer que le token est dans userData
-        if (isset($userData['token'])) {
-            Session::put('api_token', $userData['token']);
-            Session::put('nest_jwt_token', $userData['token']);
-            // Forcer la persistance immédiate des tokens en session
-            Session::save();
-        }
-        
-        // Stocker les données utilisateur en session (incluant le token)
-        Session::put('api_user', $userData);
-
-        // Créer une instance ApiUser et connecter l'utilisateur
+        // 1. On connecte d'abord l'utilisateur
         $user = new \App\Models\ApiUser($userData);
-        
-        // Log pour vérifier le rôle dans ApiUser
-        \Illuminate\Support\Facades\Log::debug('ApiUser créé', [
-            'role' => $user->role ?? null,
-            'isAdmin' => method_exists($user, 'isAdmin') ? $user->isAdmin() : 'N/A',
-            'isOwner' => method_exists($user, 'isOwner') ? $user->isOwner() : 'N/A',
-        ]);
-        
-        // Connecter l'utilisateur dans Laravel
         Auth::login($user, $request->boolean('remember'));
-        
-        // Log pour vérifier que l'utilisateur est bien connecté
-        \Illuminate\Support\Facades\Log::debug('Utilisateur connecté via Auth::login', [
-            'user_id' => $user->getAuthIdentifier(),
-            'user_email' => $user->email ?? null,
-            'isAdmin' => method_exists($user, 'isAdmin') ? $user->isAdmin() : 'N/A',
-            'auth_check' => Auth::check(),
-            'auth_user_id' => Auth::id(),
-        ]);
-        
-        // Régénérer la session pour éviter les attaques de fixation de session
-        $request->session()->regenerate();
-        
-        // S'assurer que la session est sauvegardée
-        $request->session()->save();
-        
-        // Vérifier à nouveau après la régénération
-        \Illuminate\Support\Facades\Log::debug('Session régénérée', [
-            'auth_check_after' => Auth::check(),
-            'auth_user_id_after' => Auth::id(),
-            'session_id' => $request->session()->getId(),
-        ]);
 
-        // Déterminer le rôle final (utiliser isAdmin() pour être sûr)
-        // Le rôle est déjà normalisé par ApiAuthService, mais vérifions avec isAdmin()
-        $role = $userData['role'] ?? 'owner';
-        
-        // Vérifier à nouveau avec isAdmin() pour être sûr (priorité absolue)
-        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
-            $role = 'admin';
-        } elseif (method_exists($user, 'isOwner') && $user->isOwner()) {
-            $role = 'owner';
+        // 2. ON RÉGÉNÈRE LA SESSION ICI (Avant de stocker le token)
+        $request->session()->regenerate();
+
+        // 3. MAINTENANT on stocke le token dans la NOUVELLE session
+        if (isset($userData['token'])) {
+            // On blinde les deux clés
+            $request->session()->put('api_token', $userData['token']);
+            $request->session()->put('nest_jwt_token', $userData['token']);
+            $request->session()->put('api_user', $userData);
+
+            // On force la sauvegarde pour être sûr que le driver écrive sur le disque
+            $request->session()->save();
+
+            // Validation post-login
+            \Illuminate\Support\Facades\Log::info('Vérification Session Finale', [
+                'session_id' => $request->session()->getId(),
+                'has_api_token' => $request->session()->has('api_token'),
+                'has_nest_token' => $request->session()->has('nest_jwt_token'),
+                'user_id' => Auth::id()
+            ]);
         }
-        
-        \Illuminate\Support\Facades\Log::info('Redirection après connexion', [
-            'email' => $userData['email'] ?? null,
-            'role_dans_userData' => $userData['role'] ?? 'non défini',
-            'role_detecte' => $role,
-            'isAdmin()' => method_exists($user, 'isAdmin') ? $user->isAdmin() : 'N/A',
-            'isOwner()' => method_exists($user, 'isOwner') ? $user->isOwner() : 'N/A',
-        ]);
-        
-        // Rediriger selon le rôle (utiliser Inertia::location pour les redirections externes)
+
+        // Redirection
+        $role = $userData['role'] ?? 'owner';
         if ($role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin())) {
-            // Utiliser redirect()->intended() pour Inertia
             return redirect()->intended(route('admin.dashboard'));
         }
-        
-        // Par défaut, rediriger vers le dashboard owner
+
         return redirect()->intended(route('owner.dashboard'));
     }
 
