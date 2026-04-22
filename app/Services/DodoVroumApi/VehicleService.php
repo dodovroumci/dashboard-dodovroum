@@ -125,22 +125,16 @@ class VehicleService extends BaseApiService
      */
     public function create(array $data, bool $isAdmin = false): array
     {
-        if (!$isAdmin) {
-            $userId = (string) Auth::id();
-            // Le backend NestJS pour les véhicules ne veut QUE ownerId
-            $data['ownerId'] = $userId;
-            unset($data['proprietaireId']);
-        }
-
         $dataForApi = VehicleMapper::toApi($data);
-
-        // Réinjecter ownerId après mapping pour garantir sa présence finale
-        if (!$isAdmin) {
-            $dataForApi['ownerId'] = (string) Auth::id();
-        }
         
         // On s'assure une dernière fois que proprietaireId n'est pas dans le payload final
         unset($dataForApi['proprietaireId']);
+        // NestJS assigne le propriétaire via JWT, ownerId ne doit pas être envoyé dans le body
+        unset($dataForApi['ownerId']);
+
+        // On s'assure que les types numériques sont corrects
+        $dataForApi['year'] = (int) ($dataForApi['year'] ?? date('Y'));
+        $dataForApi['seats'] = (int) ($dataForApi['seats'] ?? 5);
 
         Log::info('Payload final création véhicule envoyé à NestJS', [
             'payload' => $dataForApi,
