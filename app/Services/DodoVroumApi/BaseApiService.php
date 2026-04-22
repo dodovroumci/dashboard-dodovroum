@@ -284,6 +284,10 @@ abstract class BaseApiService
 
         try {
             $url = "{$this->baseUrl}/{$endpoint}";
+
+            Log::emergency("PAYLOAD BRUT ENVOYÉ À GUZZLE", [
+                'json' => json_encode($data),
+            ]);
             
             $response = Http::timeout(10)
                 ->withHeaders([
@@ -299,6 +303,10 @@ abstract class BaseApiService
                 $token = $this->getAuthToken();
 
                 if ($token) {
+                    Log::emergency("PAYLOAD BRUT ENVOYÉ À GUZZLE", [
+                        'json' => json_encode($data),
+                    ]);
+
                     $response = Http::timeout(10)
                         ->withHeaders([
                             'Authorization' => "Bearer {$token}",
