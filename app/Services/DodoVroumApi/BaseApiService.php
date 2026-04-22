@@ -260,6 +260,15 @@ abstract class BaseApiService
 
         // Nettoyer les données avant l'envoi (tronquer les descriptions trop longues)
         $data = $this->sanitizeDataBeforeSend($data, $endpoint);
+
+        // FIX de dernière ligne de défense:
+        // éviter tout ownerId parasite injecté avant l'envoi vers NestJS
+        if (isset($data['ownerId'])) {
+            Log::debug("Suppression forcée de ownerId dans BaseApiService avant envoi à NestJS", [
+                'endpoint' => $endpoint,
+            ]);
+            unset($data['ownerId']);
+        }
         
         // Log détaillé des données envoyées (pour debug)
         Log::debug('Requête POST API DodoVroum - Données envoyées', [
