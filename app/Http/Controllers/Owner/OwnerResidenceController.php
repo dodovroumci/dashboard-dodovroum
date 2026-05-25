@@ -779,6 +779,11 @@ class OwnerResidenceController extends Controller
         $userProprietaireId = $this->getProprietaireId($user);
         $userAuthId = (string) $user->getAuthIdentifier();
 
+        Log::info('[archived] ▶ Début', [
+            'userAuthId'         => $userAuthId,
+            'userProprietaireId' => $userProprietaireId,
+        ]);
+
         try {
             $allResidences = $this->residenceService->all([]);
         } catch (\Exception $e) {
@@ -789,9 +794,13 @@ class OwnerResidenceController extends Controller
             ]);
         }
 
+        Log::info('[archived] ① API retourne ' . count($allResidences) . ' résidence(s) au total');
+
         // Filtrer par propriétaire (même logique que index)
         $archived = [];
         foreach ($allResidences as $residence) {
+            $residenceId = $residence['id'] ?? $residence['_id'] ?? '?';
+
             $residenceOwnerId = null;
             if (isset($residence['proprietaire']) && is_array($residence['proprietaire'])) {
                 $residenceOwnerId = $residence['proprietaire']['id'] ?? $residence['proprietaire']['_id'] ?? null;
@@ -815,6 +824,23 @@ class OwnerResidenceController extends Controller
                     || ($ownerInt !== null && is_numeric($userAuthId) && $ownerInt === (int) $userAuthId);
             }
 
+            // Valeur brute de isActive telle que reçue de l'API
+            $isActiveRaw      = $residence['isActive']   ?? 'ABSENT';
+            $isVerifiedRaw    = $residence['isVerified']  ?? 'ABSENT';
+            $isActiveResolved = $residence['isActive'] ?? $residence['isVerified'] ?? true;
+
+            Log::info('[archived] ② Résidence', [
+                'id'               => $residenceId,
+                'title'            => $residence['title'] ?? $residence['name'] ?? '?',
+                'residenceOwnerId' => $residenceOwnerId,
+                'ownerMatches'     => $ownerMatches,
+                'isActive_raw'     => $isActiveRaw,
+                'isVerified_raw'   => $isVerifiedRaw,
+                'isActive_resolved'=> $isActiveResolved,
+                'isActive_type'    => gettype($isActiveResolved),
+                'passes_filter'    => $ownerMatches && $isActiveResolved === false,
+            ]);
+
             if (!$ownerMatches) {
                 continue;
             }
@@ -825,6 +851,8 @@ class OwnerResidenceController extends Controller
                 $archived[] = $residence;
             }
         }
+
+        Log::info('[archived] ③ Résultat filtre isActive === false : ' . count($archived) . ' résidence(s) archivée(s)');
 
         $mapped = array_map(function ($r) {
             $mapped = \App\Services\DodoVroumApi\Mappers\ResidenceMapper::fromApi($r);
