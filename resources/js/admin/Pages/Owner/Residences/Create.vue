@@ -13,6 +13,11 @@
       </Link>
     </div>
 
+    <!-- Erreur générale serveur -->
+    <div v-if="errors.error" class="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">
+      {{ errors.error }}
+    </div>
+
     <form @submit.prevent="submit" class="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
       <!-- Informations de base -->
       <div>

@@ -472,10 +472,11 @@ class OwnerResidenceController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur création résidence', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return back()->withErrors([
-                'error' => 'Erreur lors de la création de la résidence'
+                'error' => $e->getMessage() ?: 'Erreur lors de la création de la résidence'
             ])->withInput();
         }
     }
