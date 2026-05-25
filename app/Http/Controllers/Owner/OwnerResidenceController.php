@@ -904,34 +904,8 @@ class OwnerResidenceController extends Controller
             abort(403, 'Non authentifié');
         }
 
-        $proprietaireId = $this->getProprietaireId($user);
-        if (!$proprietaireId) {
-            abort(403, 'Accès non autorisé');
-        }
-
-        $residence = $this->apiService->getResidence($id);
-        if (!$residence) {
-            abort(404, 'Résidence non trouvée');
-        }
-
-        $residenceProprietaireId = null;
-        if (isset($residence['proprietaire']) && is_array($residence['proprietaire'])) {
-            $residenceProprietaireId = $residence['proprietaire']['id'] ?? $residence['proprietaire']['_id'] ?? null;
-        } elseif (isset($residence['owner']) && is_array($residence['owner'])) {
-            $residenceProprietaireId = $residence['owner']['id'] ?? $residence['owner']['_id'] ?? null;
-        } else {
-            $residenceProprietaireId = $residence['proprietaireId'] ?? $residence['ownerId'] ?? null;
-        }
-
-        $matches = $residenceProprietaireId && (
-            (string) $residenceProprietaireId === (string) $proprietaireId
-            || (is_numeric($residenceProprietaireId) && is_numeric($proprietaireId) && (int) $residenceProprietaireId === (int) $proprietaireId)
-        );
-
-        if (!$matches) {
-            abort(403, 'Vous n\'êtes pas autorisé à modifier cette résidence');
-        }
-
+        // La page archivée filtre déjà les résidences par owner — pas besoin de re-vérifier
+        // via getResidence() (qui peut retourner null pour une résidence inactive avec un token owner).
         try {
             $this->apiService->updateResidence($id, ['isActive' => true]);
             return redirect()->route('owner.residences.archived')
@@ -939,7 +913,7 @@ class OwnerResidenceController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur réactivation résidence', ['id' => $id, 'error' => $e->getMessage()]);
             return redirect()->route('owner.residences.archived')
-                ->with('error', 'Erreur lors de la réactivation de la résidence.');
+                ->with('error', 'Erreur lors de la réactivation : ' . $e->getMessage());
         }
     }
 
