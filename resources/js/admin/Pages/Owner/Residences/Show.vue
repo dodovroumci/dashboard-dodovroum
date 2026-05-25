@@ -64,13 +64,17 @@
                 <Eye class="w-4 h-4 shrink-0" />
                 Voir côté client
               </a>
-              <button
-                @click="toggleDisable"
-                class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 touch-manipulation"
-              >
-                <Power class="w-4 h-4 shrink-0" />
-                {{ isActive ? 'Désactiver' : 'Activer' }}
-              </button>
+              <form :action="`/owner/residences/${residence?.id}/toggle-active`" method="POST">
+                <input type="hidden" name="_token" :value="csrfToken()" />
+                <input type="hidden" name="_method" value="PATCH" />
+                <button
+                  type="submit"
+                  class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 touch-manipulation"
+                >
+                  <Power class="w-4 h-4 shrink-0" />
+                  {{ isActive ? 'Désactiver' : 'Activer' }}
+                </button>
+              </form>
             </div>
           </button>
         </div>
@@ -305,16 +309,20 @@
     <section class="bg-red-50 border border-red-200 rounded-2xl p-6">
       <h2 class="text-lg font-semibold text-red-900 mb-4">Actions sensibles</h2>
       <div class="flex flex-col sm:flex-row gap-4">
-        <button
-          @click="toggleDisable"
-          class="px-4 py-2 bg-white rounded-lg flex items-center justify-center gap-2"
-          :class="isActive
-            ? 'border border-red-300 text-red-700 hover:bg-red-50'
-            : 'border border-emerald-300 text-emerald-700 hover:bg-emerald-50'"
-        >
-          <Power class="w-4 h-4" />
-          {{ isActive ? 'Désactiver la résidence' : 'Activer la résidence' }}
-        </button>
+        <form :action="`/owner/residences/${residence?.id}/toggle-active`" method="POST">
+          <input type="hidden" name="_token" :value="csrfToken()" />
+          <input type="hidden" name="_method" value="PATCH" />
+          <button
+            type="submit"
+            class="px-4 py-2 bg-white rounded-lg flex items-center justify-center gap-2"
+            :class="isActive
+              ? 'border border-red-300 text-red-700 hover:bg-red-50'
+              : 'border border-emerald-300 text-emerald-700 hover:bg-emerald-50'"
+          >
+            <Power class="w-4 h-4" />
+            {{ isActive ? 'Désactiver la résidence' : 'Activer la résidence' }}
+          </button>
+        </form>
         <button
           @click="confirmDelete"
           class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
@@ -383,7 +391,7 @@
 </template>
 
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import OwnerLayout from '../../../Components/Layouts/OwnerLayout.vue';
 import AvailabilityCalendar from '../../../Components/AvailabilityCalendar.vue';
@@ -466,6 +474,9 @@ const isActive = computed(() => {
   return !!val;
 });
 
+const page = usePage();
+const csrfToken = () => (page.props as any).csrf_token as string;
+
 const showActionsMenu = ref(false);
 const showDeleteModal = ref(false);
 const selectedImage = ref<string | null>(null);
@@ -473,14 +484,6 @@ const imageErrors = ref<Record<number, boolean>>({});
 
 const toggleActionsMenu = () => {
   showActionsMenu.value = !showActionsMenu.value;
-};
-
-const toggleDisable = () => {
-  if (!props.residence?.id) return;
-  showActionsMenu.value = false;
-  router.patch(`/owner/residences/${props.residence.id}/toggle-active`, {}, {
-    preserveScroll: true,
-  });
 };
 
 const confirmDelete = () => {
