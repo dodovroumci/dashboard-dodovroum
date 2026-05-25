@@ -470,6 +470,7 @@ const props = defineProps<{
 
 const isActive = computed(() => {
   const val = props.residence?.isActive;
+  console.log('isActive raw:', val, typeof val);
   if (typeof val === 'string') return val === 'true';
   return !!val;
 });
