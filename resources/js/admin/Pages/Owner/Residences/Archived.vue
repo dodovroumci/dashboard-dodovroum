@@ -171,10 +171,11 @@
             <button
               type="button"
               @click="doReactivate"
-              class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"
+              :disabled="reactivating !== null"
+              class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <RotateCcw class="w-4 h-4" />
-              Réactiver
+              <RotateCcw class="w-4 h-4" :class="{ 'animate-spin': reactivating !== null }" />
+              {{ reactivating !== null ? 'Réactivation…' : 'Réactiver' }}
             </button>
           </div>
         </div>
@@ -247,10 +248,20 @@ const doReactivate = () => {
   if (!residenceToReactivate.value) return;
   const id = residenceToReactivate.value.id;
   reactivating.value = id;
-  residenceToReactivate.value = null;
+  // Ne pas fermer le modal avant la réponse — l'utilisateur doit voir le résultat
   router.patch(`/owner/residences/${id}/reactivate`, {}, {
     preserveScroll: true,
-    onFinish: () => { reactivating.value = null; },
+    onSuccess: () => {
+      residenceToReactivate.value = null;
+      reactivating.value = null;
+    },
+    onError: () => {
+      residenceToReactivate.value = null;
+      reactivating.value = null;
+    },
+    onFinish: () => {
+      reactivating.value = null;
+    },
   });
 };
 </script>
