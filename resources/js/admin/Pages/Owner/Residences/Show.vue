@@ -69,7 +69,7 @@
                 class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 touch-manipulation"
               >
                 <Power class="w-4 h-4 shrink-0" />
-                {{ residence?.isActive ? 'Désactiver' : 'Activer' }}
+                {{ isActive ? 'Désactiver' : 'Activer' }}
               </button>
             </div>
           </button>
@@ -307,10 +307,13 @@
       <div class="flex flex-col sm:flex-row gap-4">
         <button
           @click="toggleDisable"
-          class="px-4 py-2 bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 flex items-center justify-center gap-2"
+          class="px-4 py-2 bg-white rounded-lg flex items-center justify-center gap-2"
+          :class="isActive
+            ? 'border border-red-300 text-red-700 hover:bg-red-50'
+            : 'border border-emerald-300 text-emerald-700 hover:bg-emerald-50'"
         >
           <Power class="w-4 h-4" />
-          {{ residence?.isActive ? 'Désactiver la résidence' : 'Activer la résidence' }}
+          {{ isActive ? 'Désactiver la résidence' : 'Activer la résidence' }}
         </button>
         <button
           @click="confirmDelete"
@@ -456,6 +459,12 @@ const props = defineProps<{
     statusRaw: string;
   }>;
 }>();
+
+const isActive = computed(() => {
+  const val = props.residence?.isActive;
+  if (typeof val === 'string') return val === 'true';
+  return !!val;
+});
 
 const showActionsMenu = ref(false);
 const showDeleteModal = ref(false);
