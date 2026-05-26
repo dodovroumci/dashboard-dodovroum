@@ -176,8 +176,9 @@
                 v-for="residence in residences"
                 :key="residence.id"
                 :value="residence.id"
+                :disabled="usedResidenceIds.includes(String(residence.id))"
               >
-                {{ residence.nom || residence.name || residence.title || 'Résidence sans nom' }} - {{ formatPrice(residence.prixParNuit || residence.pricePerNight || residence.price || 0) }} CFA/nuit
+                {{ residence.nom || residence.name || residence.title || 'Résidence sans nom' }}{{ usedResidenceIds.includes(String(residence.id)) ? ' (déjà dans une offre)' : '' }} — {{ formatPrice(residence.prixParNuit || residence.pricePerNight || residence.price || 0) }} CFA/nuit
               </option>
             </select>
             <p v-if="errors.residenceId" class="text-red-600 text-sm mt-1">{{ errors.residenceId }}</p>
@@ -197,8 +198,9 @@
                 v-for="vehicle in vehicles"
                 :key="vehicle.id"
                 :value="vehicle.id"
+                :disabled="usedVehicleIds.includes(String(vehicle.id))"
               >
-                {{ vehicle.titre || vehicle.name || `${vehicle.marque || ''} ${vehicle.modele || ''}`.trim() || 'Véhicule sans nom' }} - {{ formatPrice(vehicle.prixParJour || vehicle.pricePerDay || vehicle.price || 0) }} CFA/jour
+                {{ vehicle.titre || vehicle.name || `${vehicle.marque || ''} ${vehicle.modele || ''}`.trim() || 'Véhicule sans nom' }}{{ usedVehicleIds.includes(String(vehicle.id)) ? ' (déjà dans une offre)' : '' }} — {{ formatPrice(vehicle.prixParJour || vehicle.pricePerDay || vehicle.price || 0) }} CFA/jour
               </option>
             </select>
             <p v-if="errors.vehicleId" class="text-red-600 text-sm mt-1">{{ errors.vehicleId }}</p>
@@ -325,7 +327,12 @@ const props = defineProps<{
   };
   residences?: Array<any>;
   vehicles?: Array<any>;
+  usedResidenceIds?: string[];
+  usedVehicleIds?: string[];
 }>();
+
+const usedResidenceIds = ref<string[]>(props.usedResidenceIds || []);
+const usedVehicleIds = ref<string[]>(props.usedVehicleIds || []);
 
 // Initialiser les images : utiliser images si présent, sinon imageUrl
 const initialImages = props.comboOffer?.images && Array.isArray(props.comboOffer.images) && props.comboOffer.images.length > 0

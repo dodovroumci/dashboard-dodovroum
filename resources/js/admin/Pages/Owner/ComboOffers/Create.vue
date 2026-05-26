@@ -191,8 +191,9 @@
                 v-for="residence in ownerResidences"
                 :key="residence.id"
                 :value="residence.id"
+                :disabled="usedResidenceIds.includes(String(residence.id))"
               >
-                {{ residence.nom || residence.name || residence.title || 'Résidence sans nom' }} - {{ formatPrice(residence.prixParNuit || residence.pricePerNight || residence.price || 0) }} CFA/nuit
+                {{ residence.nom || residence.name || residence.title || 'Résidence sans nom' }}{{ usedResidenceIds.includes(String(residence.id)) ? ' (déjà dans une offre)' : '' }} — {{ formatPrice(residence.prixParNuit || residence.pricePerNight || residence.price || 0) }} CFA/nuit
               </option>
             </select>
             <p v-if="errors.residenceId" class="text-red-600 text-sm mt-1">{{ errors.residenceId }}</p>
@@ -217,8 +218,9 @@
                 v-for="vehicle in ownerVehicles"
                 :key="vehicle.id"
                 :value="vehicle.id"
+                :disabled="usedVehicleIds.includes(String(vehicle.id))"
               >
-                {{ vehicle.titre || vehicle.name || `${vehicle.marque || ''} ${vehicle.modele || ''}`.trim() || 'Véhicule sans nom' }} - {{ formatPrice(vehicle.prixParJour || vehicle.pricePerDay || vehicle.price || 0) }} CFA/jour
+                {{ vehicle.titre || vehicle.name || `${vehicle.marque || ''} ${vehicle.modele || ''}`.trim() || 'Véhicule sans nom' }}{{ usedVehicleIds.includes(String(vehicle.id)) ? ' (déjà dans une offre)' : '' }} — {{ formatPrice(vehicle.prixParJour || vehicle.pricePerDay || vehicle.price || 0) }} CFA/jour
               </option>
             </select>
             <p v-if="errors.vehicleId" class="text-red-600 text-sm mt-1">{{ errors.vehicleId }}</p>
@@ -327,6 +329,8 @@ defineOptions({
 const props = defineProps<{
   residences?: Array<any>;
   vehicles?: Array<any>;
+  usedResidenceIds?: string[];
+  usedVehicleIds?: string[];
 }>();
 
 const form = useForm({
@@ -347,6 +351,8 @@ const form = useForm({
 
 const ownerResidences = ref<any[]>([]);
 const ownerVehicles = ref<any[]>([]);
+const usedResidenceIds = ref<string[]>(props.usedResidenceIds || []);
+const usedVehicleIds = ref<string[]>(props.usedVehicleIds || []);
 const loadingResidences = ref(false);
 const loadingVehicles = ref(false);
 const discountPercentage = ref(0);
@@ -379,6 +385,8 @@ const loadOwnerProperties = async () => {
     
     ownerResidences.value = response.data?.residences || [];
     ownerVehicles.value = response.data?.vehicles || [];
+    usedResidenceIds.value = response.data?.usedResidenceIds || props.usedResidenceIds || [];
+    usedVehicleIds.value = response.data?.usedVehicleIds || props.usedVehicleIds || [];
 
     // Si les données sont déjà passées en props, les utiliser
     if (props.residences && props.residences.length > 0) {
@@ -396,6 +404,8 @@ const loadOwnerProperties = async () => {
     if (props.vehicles) {
       ownerVehicles.value = props.vehicles;
     }
+    usedResidenceIds.value = props.usedResidenceIds || [];
+    usedVehicleIds.value = props.usedVehicleIds || [];
   } finally {
     loadingResidences.value = false;
     loadingVehicles.value = false;

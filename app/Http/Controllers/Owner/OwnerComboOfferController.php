@@ -347,12 +347,16 @@ class OwnerComboOfferController extends Controller
                 abort(403, 'Accès non autorisé');
             }
             
-            $residences = $this->residenceService->all(['proprietaireId' => $proprietaireId]);
-            $vehicles = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $residences   = $this->residenceService->all(['proprietaireId' => $proprietaireId]);
+            $vehicles     = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $activeOffers = $this->offerService->all([]);
+            $used         = $this->extractUsedPropertyIds(is_array($activeOffers) ? $activeOffers : []);
 
             return Inertia::render('Owner/ComboOffers/Create', [
-                'residences' => is_array($residences) ? array_slice($residences, 0, 100) : [],
-                'vehicles' => is_array($vehicles) ? array_slice($vehicles, 0, 100) : [],
+                'residences'       => is_array($residences) ? array_slice($residences, 0, 100) : [],
+                'vehicles'         => is_array($vehicles) ? array_slice($vehicles, 0, 100) : [],
+                'usedResidenceIds' => $used['usedResidenceIds'],
+                'usedVehicleIds'   => $used['usedVehicleIds'],
             ]);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la préparation du formulaire de création', [
@@ -903,13 +907,17 @@ class OwnerComboOfferController extends Controller
                 'isVerified' => $offer['isVerified'] ?? $offer['is_verified'] ?? false,
             ];
             
-            $residences = $this->residenceService->all(['proprietaireId' => $proprietaireId]);
-            $vehicles = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $residences   = $this->residenceService->all(['proprietaireId' => $proprietaireId]);
+            $vehicles     = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $activeOffers = $this->offerService->all([]);
+            $used         = $this->extractUsedPropertyIds(is_array($activeOffers) ? $activeOffers : [], (string) $id);
 
             return Inertia::render('Owner/ComboOffers/Edit', [
-                'comboOffer' => $mappedOffer,
-                'residences' => is_array($residences) ? array_slice($residences, 0, 100) : [],
-                'vehicles' => is_array($vehicles) ? array_slice($vehicles, 0, 100) : [],
+                'comboOffer'       => $mappedOffer,
+                'residences'       => is_array($residences) ? array_slice($residences, 0, 100) : [],
+                'vehicles'         => is_array($vehicles) ? array_slice($vehicles, 0, 100) : [],
+                'usedResidenceIds' => $used['usedResidenceIds'],
+                'usedVehicleIds'   => $used['usedVehicleIds'],
             ]);
         } catch (DodoVroumApiException $e) {
             Log::error('Erreur API lors de la récupération de l\'offre combinée pour édition', [
@@ -1224,24 +1232,18 @@ class OwnerComboOfferController extends Controller
             }
 
             $ownerResidences = $this->residenceService->all(['proprietaireId' => $proprietaireId]);
-            $ownerVehicles = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $ownerVehicles   = $this->vehicleService->all(['proprietaireId' => $proprietaireId]);
+            $activeOffers    = $this->offerService->all([]);
+            $used            = $this->extractUsedPropertyIds(is_array($activeOffers) ? $activeOffers : []);
 
-            if (!is_array($ownerResidences)) {
-                $ownerResidences = [];
-            }
-            if (!is_array($ownerVehicles)) {
-                $ownerVehicles = [];
-            }
-
-            Log::info('Résidences et véhicules récupérés pour le propriétaire', [
-                'proprietaireId' => $proprietaireId,
-                'residences_count' => count($ownerResidences),
-                'vehicles_count' => count($ownerVehicles),
-            ]);
+            if (!is_array($ownerResidences)) { $ownerResidences = []; }
+            if (!is_array($ownerVehicles))   { $ownerVehicles   = []; }
 
             return response()->json([
-                'residences' => array_values($ownerResidences),
-                'vehicles' => array_values($ownerVehicles),
+                'residences'       => array_values($ownerResidences),
+                'vehicles'         => array_values($ownerVehicles),
+                'usedResidenceIds' => $used['usedResidenceIds'],
+                'usedVehicleIds'   => $used['usedVehicleIds'],
             ]);
         } catch (\Exception $e) {
             Log::error('Erreur récupération propriétés propriétaire', [
@@ -1255,6 +1257,47 @@ class OwnerComboOfferController extends Controller
                 'error' => 'Erreur lors de la récupération des propriétés',
             ], 500);
         }
+    }
+
+    /**
+     * Extraire les IDs de résidences et véhicules déjà utilisés dans des offres actives.
+     * $excludeOfferId permet d'ignorer l'offre en cours d'édition.
+     */
+    private function extractUsedPropertyIds(array $offers, ?string $excludeOfferId = null): array
+    {
+        $usedResidenceIds = [];
+        $usedVehicleIds   = [];
+
+        foreach ($offers as $offer) {
+            $offerId = (string) ($offer['id'] ?? $offer['_id'] ?? '');
+            if ($excludeOfferId && $offerId === $excludeOfferId) {
+                continue;
+            }
+
+            $isActive = $offer['isActive'] ?? $offer['is_active'] ?? true;
+            if (!$isActive) {
+                continue;
+            }
+
+            $residenceId = $offer['residence']['id']
+                ?? $offer['residence']['_id']
+                ?? $offer['residenceId']
+                ?? null;
+
+            $vehicleRaw = $offer['voiture'] ?? $offer['vehicle'] ?? null;
+            $vehicleId  = $vehicleRaw['id']
+                ?? $vehicleRaw['_id']
+                ?? $offer['vehicleId']
+                ?? null;
+
+            if ($residenceId) $usedResidenceIds[] = (string) $residenceId;
+            if ($vehicleId)   $usedVehicleIds[]   = (string) $vehicleId;
+        }
+
+        return [
+            'usedResidenceIds' => array_values(array_unique($usedResidenceIds)),
+            'usedVehicleIds'   => array_values(array_unique($usedVehicleIds)),
+        ];
     }
 
     /**
