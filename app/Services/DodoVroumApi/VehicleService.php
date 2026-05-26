@@ -54,58 +54,37 @@ class VehicleService extends BaseApiService
      */
     public function find(string $id): ?array
     {
-        Log::debug('VehicleService::find appelé', [
-            'vehicle_id' => $id,
-            'endpoint' => "vehicles/{$id}",
-        ]);
-        
-        // L'API NestJS n'a pas d'endpoint GET /api/vehicles/:id
-        // On récupère tous les véhicules et on filtre par ID
-        $allVehicles = $this->all([]);
-        
-        Log::debug('VehicleService::find - Véhicules récupérés depuis all()', [
-            'vehicle_id' => $id,
-            'total_vehicles' => count($allVehicles),
-        ]);
-        
-        // Chercher le véhicule par ID (support id et _id)
-        $vehicle = null;
-        foreach ($allVehicles as $v) {
-            $vehicleId = $v['id'] ?? $v['_id'] ?? null;
-            if ($vehicleId && (string) $vehicleId === (string) $id) {
-                $vehicle = $v;
-                break;
+        try {
+            $vehicle = $this->get("vehicles/{$id}");
+        } catch (\Exception $e) {
+            Log::warning('VehicleService::find - GET direct échoué, fallback all()', [
+                'vehicle_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+            $vehicle = null;
+        }
+
+        // Fallback : chercher dans la liste complète si le GET direct échoue
+        if (empty($vehicle)) {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            $proprietaireId = $user ? (string) $user->getAuthIdentifier() : null;
+            $filters = $proprietaireId ? ['proprietaireId' => $proprietaireId] : [];
+
+            foreach ($this->all($filters) as $v) {
+                $vehicleId = $v['id'] ?? $v['_id'] ?? null;
+                if ($vehicleId && (string) $vehicleId === (string) $id) {
+                    $vehicle = $v;
+                    break;
+                }
             }
         }
-        
-        Log::debug('VehicleService::find - Recherche par ID', [
-            'vehicle_id' => $id,
-            'vehicle_found' => !empty($vehicle),
-            'vehicle_keys' => $vehicle ? array_keys($vehicle) : null,
-            'vehicle_id_in_response' => $vehicle['id'] ?? $vehicle['_id'] ?? null,
-            'raw_images' => $vehicle['images'] ?? null,
-            'raw_images_type' => isset($vehicle['images']) ? gettype($vehicle['images']) : 'not_set',
-            'raw_images_count' => isset($vehicle['images']) && is_array($vehicle['images']) ? count($vehicle['images']) : 0,
-        ]);
-        
-        if (!$vehicle) {
-            Log::warning('VehicleService::find - Véhicule non trouvé dans la liste', [
-                'vehicle_id' => $id,
-                'total_vehicles_checked' => count($allVehicles),
-            ]);
+
+        if (empty($vehicle)) {
+            Log::warning('VehicleService::find - Véhicule non trouvé', ['vehicle_id' => $id]);
             return null;
         }
-        
-        $mappedVehicle = VehicleMapper::fromApi($vehicle);
-        
-        Log::debug('VehicleService::find - Véhicule mappé', [
-            'vehicle_id' => $id,
-            'mapped_keys' => $mappedVehicle ? array_keys($mappedVehicle) : null,
-            'mapped_images' => $mappedVehicle['images'] ?? null,
-            'mapped_images_count' => isset($mappedVehicle['images']) && is_array($mappedVehicle['images']) ? count($mappedVehicle['images']) : 0,
-        ]);
-        
-        return $mappedVehicle;
+
+        return VehicleMapper::fromApi($vehicle);
     }
 
     /**
