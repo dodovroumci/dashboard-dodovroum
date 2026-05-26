@@ -2,7 +2,7 @@
   <header class="bg-white border-b border-slate-200/80 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
     <div class="px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between gap-3 min-h-[56px] sm:min-h-0">
 
-      <!-- Gauche : toggle + titre -->
+      <!-- Gauche : toggle + logo + titre -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <button
           v-if="typeof onToggleSidebar === 'function'"
@@ -13,6 +13,17 @@
         >
           <Menu class="w-5 h-5" />
         </button>
+
+        <!-- Logo (visible uniquement sur desktop, caché quand sidebar présente) -->
+        <img
+          :src="logoUrl"
+          alt="DodoVroum"
+          class="hidden lg:block h-8 w-auto flex-shrink-0"
+        />
+
+        <!-- Séparateur vertical -->
+        <div class="hidden lg:block w-px h-5 bg-slate-200 flex-shrink-0" />
+
         <div class="min-w-0">
           <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">{{ headerTitle }}</h1>
           <p class="text-xs text-slate-400 truncate hidden sm:block">{{ headerSubtitle }}</p>
@@ -85,6 +96,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { usePage, router, Link } from '@inertiajs/vue3';
 import { Menu } from 'lucide-vue-next';
+import logoUrl from '../assets/logo.png';
 
 defineProps<{
   onToggleSidebar?: () => void;
