@@ -116,15 +116,17 @@
                 >
                   <Eye class="w-4 h-4" />
                 </a>
-                <button
-                  type="button"
-                  @click="confirmReactivate(vehicle)"
-                  :disabled="reactivating === vehicle.id"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <RotateCcw class="w-3.5 h-3.5" :class="{ 'animate-spin': reactivating === vehicle.id }" />
-                  Réactiver
-                </button>
+                <form :action="`/owner/vehicles/${vehicle.id}/reactivate`" method="POST">
+                  <input type="hidden" name="_token" :value="csrfToken()" />
+                  <input type="hidden" name="_method" value="PATCH" />
+                  <button
+                    type="submit"
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                  >
+                    <RotateCcw class="w-3.5 h-3.5" />
+                    Réactiver
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
@@ -139,52 +141,12 @@
         :filters="{}"
       />
     </div>
-
-    <!-- Modal confirmation réactivation -->
-    <Teleport to="body">
-      <div
-        v-if="vehicleToReactivate"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]"
-        @click.self="vehicleToReactivate = null"
-      >
-        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl" @click.stop>
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <RotateCcw class="w-5 h-5 text-emerald-600" />
-            </div>
-            <h3 class="text-lg font-semibold text-slate-900">Réactiver le véhicule</h3>
-          </div>
-          <p class="text-slate-600 mb-6">
-            Voulez-vous réactiver
-            <strong>{{ vehicleToReactivate.name || 'ce véhicule' }}</strong> ?
-            Il redeviendra visible et disponible à la réservation.
-          </p>
-          <div class="flex justify-end gap-3">
-            <button
-              type="button"
-              @click="vehicleToReactivate = null"
-              class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              @click="doReactivate"
-              class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium flex items-center gap-2"
-            >
-              <RotateCcw class="w-4 h-4" />
-              Réactiver
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, Teleport } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import { Car, Bike, Eye, Archive, RotateCcw, ChevronLeft } from 'lucide-vue-next';
 import Pagination from '../../../Components/Pagination.vue';
 import OwnerLayout from '../../../Components/Layouts/OwnerLayout.vue';
@@ -216,9 +178,10 @@ const props = defineProps<{
   error?: string;
 }>();
 
+const page = usePage();
+const csrfToken = () => (page.props as any).csrf_token as string;
+
 const imageErrors = ref<Record<string | number, boolean>>({});
-const reactivating = ref<string | number | null>(null);
-const vehicleToReactivate = ref<(typeof props.vehicles)[0] | null>(null);
 
 const getImage = (vehicle: any): string | null => {
   if (vehicle.images?.length > 0) return vehicle.images[0];
@@ -242,19 +205,4 @@ const formatType = (type?: string): string => {
 };
 
 const formatPrice = (price: number): string => new Intl.NumberFormat('fr-FR').format(price);
-
-const confirmReactivate = (vehicle: (typeof props.vehicles)[0]) => {
-  vehicleToReactivate.value = vehicle;
-};
-
-const doReactivate = () => {
-  if (!vehicleToReactivate.value) return;
-  const id = vehicleToReactivate.value.id;
-  reactivating.value = id;
-  vehicleToReactivate.value = null;
-  router.patch(`/owner/vehicles/${id}/reactivate`, {}, {
-    preserveScroll: true,
-    onFinish: () => { reactivating.value = null; },
-  });
-};
 </script>
