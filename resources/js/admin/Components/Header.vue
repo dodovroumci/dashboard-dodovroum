@@ -1,69 +1,80 @@
 <template>
-  <header class="bg-white border-b border-slate-200 shrink-0">
-    <div class="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 min-h-[56px] sm:min-h-0">
+  <header class="bg-white border-b border-slate-200/80 shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div class="px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between gap-3 min-h-[56px] sm:min-h-0">
+
+      <!-- Gauche : toggle + titre -->
       <div class="flex items-center gap-3 min-w-0 flex-1">
         <button
           v-if="typeof onToggleSidebar === 'function'"
           type="button"
-          class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors touch-manipulation shrink-0"
+          class="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors duration-150 touch-manipulation shrink-0"
           aria-label="Ouvrir le menu"
           @click="onToggleSidebar"
         >
-          <Menu class="w-6 h-6" />
+          <Menu class="w-5 h-5" />
         </button>
         <div class="min-w-0">
-          <h1 class="text-base sm:text-xl font-semibold text-slate-900 truncate">{{ headerTitle }}</h1>
-          <p class="text-xs sm:text-sm text-slate-500 truncate hidden sm:block">{{ headerSubtitle }}</p>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 tracking-tight truncate">{{ headerTitle }}</h1>
+          <p class="text-xs text-slate-400 truncate hidden sm:block">{{ headerSubtitle }}</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2 sm:gap-4 shrink-0">
+      <!-- Droite : profil utilisateur -->
+      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
         <div class="relative" ref="menuContainer">
           <button
             type="button"
             @click.stop="toggleUserMenu"
-            class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-h-[44px] min-w-[44px] justify-end touch-manipulation rounded-lg p-1 -m-1"
+            class="flex items-center gap-2.5 cursor-pointer min-h-[44px] min-w-[44px] justify-end touch-manipulation rounded-xl px-2 py-1.5 hover:bg-slate-50 transition-colors duration-150"
             aria-haspopup="true"
             :aria-expanded="isUserMenuOpen"
           >
-            <span class="text-right hidden sm:block max-w-[120px]">
-              <span class="block text-sm font-medium text-slate-900 truncate">{{ userDisplayName }}</span>
-              <span class="block text-xs text-slate-500 truncate">{{ userEmail }}</span>
+            <span class="text-right hidden sm:block max-w-[130px]">
+              <span class="block text-sm font-semibold text-slate-800 truncate leading-tight">{{ userDisplayName }}</span>
+              <span class="block text-xs text-slate-400 truncate leading-tight mt-0.5">{{ userEmail }}</span>
             </span>
-            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-brand-light flex items-center justify-center text-white font-semibold text-sm shrink-0">
-              DV
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-white font-bold text-sm shrink-0 ring-2 ring-white shadow-sm">
+              {{ userDisplayName.charAt(0).toUpperCase() }}
             </div>
           </button>
 
-          <div
-            v-if="isUserMenuOpen"
-            class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50"
-            role="menu"
-            @click.stop
+          <!-- Dropdown -->
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0 scale-95 -translate-y-1"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100 scale-100 translate-y-0"
+            leave-to-class="opacity-0 scale-95 -translate-y-1"
           >
-            <Link
-              href="/profile"
-              class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 min-h-[44px] flex items-center"
-              @click="closeUserMenu"
+            <div
+              v-if="isUserMenuOpen"
+              class="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg shadow-slate-200/80 border border-slate-100 py-1.5 z-50 origin-top-right"
+              role="menu"
+              @click.stop
             >
-              Mon profil
-            </Link>
-            <a
-              href="#"
-              class="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 min-h-[44px] flex items-center"
-              @click.prevent="closeUserMenu"
-            >
-              Paramètres
-            </a>
-            <div class="border-t border-slate-200 my-1" />
-            <a
-              href="#"
-              class="block px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 min-h-[44px] flex items-center"
-              @click.prevent="handleLogout"
-            >
-              Déconnexion
-            </a>
-          </div>
+              <!-- Info user -->
+              <div class="px-4 py-2.5 border-b border-slate-100 mb-1">
+                <p class="text-sm font-semibold text-slate-800 truncate">{{ userDisplayName }}</p>
+                <p class="text-xs text-slate-400 truncate mt-0.5">{{ userEmail }}</p>
+              </div>
+              <Link
+                href="/profile"
+                class="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors duration-100 min-h-[36px]"
+                @click="closeUserMenu"
+              >
+                Mon profil
+              </Link>
+              <div class="border-t border-slate-100 mt-1 pt-1" />
+              <button
+                type="button"
+                class="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors duration-100 min-h-[36px]"
+                @click="handleLogout"
+              >
+                Déconnexion
+              </button>
+            </div>
+          </Transition>
         </div>
       </div>
     </div>

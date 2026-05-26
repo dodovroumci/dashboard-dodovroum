@@ -16,40 +16,58 @@
     role="navigation"
     aria-label="Navigation principale"
   >
-    <div class="flex items-center justify-between px-4 py-4 border-b border-slate-700 lg:px-6 lg:py-5">
+    <!-- Header sidebar -->
+    <div class="flex items-center justify-between px-4 py-4 border-b border-white/[0.07] lg:px-6 lg:py-5">
       <div class="min-w-0">
-        <p class="text-lg font-semibold truncate">{{ sidebarTitle }}</p>
-        <p class="text-xs text-slate-400 truncate">{{ sidebarSubtitle }}</p>
+        <p class="text-sm font-bold text-white tracking-tight truncate">{{ sidebarTitle }}</p>
+        <p class="text-xs text-slate-400 mt-0.5 truncate">{{ sidebarSubtitle }}</p>
       </div>
       <button
         type="button"
-        class="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-colors touch-manipulation"
+        class="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors duration-150 touch-manipulation"
         aria-label="Fermer le menu"
         @click="close"
       >
         <X class="w-5 h-5" />
       </button>
     </div>
-    <nav class="flex-1 p-4 space-y-1 overflow-y-auto overflow-x-hidden">
+
+    <!-- Navigation -->
+    <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">
       <Link
         v-for="item in props.items"
         :key="item.href"
         :href="item.href"
-        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer min-h-[44px] touch-manipulation"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer min-h-[44px] touch-manipulation relative"
         :class="[
           isActive(item.href)
-            ? 'bg-[#374151] text-white'
-            : 'text-white hover:bg-slate-700/50',
+            ? 'bg-white/10 text-white shadow-sm'
+            : 'text-slate-400 hover:bg-white/[0.07] hover:text-slate-100',
         ]"
         @click="handleLinkClick"
       >
-        <component :is="item.icon" class="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+        <!-- Indicateur actif orange -->
+        <span
+          v-if="isActive(item.href)"
+          class="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-brand rounded-r-full"
+        />
+        <component
+          :is="item.icon"
+          class="w-[18px] h-[18px] flex-shrink-0 transition-colors duration-150"
+          :class="isActive(item.href) ? 'text-brand' : ''"
+          aria-hidden="true"
+        />
         <span class="truncate">{{ item.label }}</span>
       </Link>
     </nav>
-    <div class="p-4 border-t border-slate-700 bg-slate-800/50 shrink-0">
-      <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
-        <div class="w-4 h-4 bg-white rounded-sm" />
+
+    <!-- Footer sidebar -->
+    <div class="px-4 py-4 border-t border-white/[0.07] shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-xs font-bold">DV</span>
+        </div>
+        <span class="text-xs text-slate-400 font-medium">DodoVroum v1.0</span>
       </div>
     </div>
   </aside>

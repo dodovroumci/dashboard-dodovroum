@@ -30,56 +30,57 @@
     </section>
 
     <!-- Réservations récentes -->
-    <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6">
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h2 class="text-base sm:text-lg font-semibold text-slate-900">Réservations récentes</h2>
+    <section class="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-slate-100">
+        <h2 class="text-sm sm:text-base font-bold text-slate-900 tracking-tight">Réservations récentes</h2>
         <Link
           :href="route('admin.bookings.index')"
-          class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          class="text-xs font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
         >
           Voir toutes →
         </Link>
       </div>
-      <div v-if="recentBookings.length === 0" class="text-center py-8">
-        <Calendar class="w-12 h-12 text-slate-300 mx-auto mb-2" />
-        <p class="text-slate-500">Aucune réservation récente</p>
+      <div v-if="recentBookings.length === 0" class="text-center py-12">
+        <Calendar class="w-10 h-10 text-slate-200 mx-auto mb-3" />
+        <p class="text-sm text-slate-400 font-medium">Aucune réservation récente</p>
       </div>
       <div v-else class="table-scroll-wrap">
         <table class="w-full min-w-[600px]">
-          <thead class="bg-slate-50 border-b border-slate-200">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Client</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Bien</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Dates</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Statut</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase">Actions</th>
+          <thead>
+            <tr class="bg-slate-50/80 border-b border-slate-100">
+              <th class="px-4 sm:px-6 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Client</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Bien</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Dates</th>
+              <th class="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Statut</th>
+              <th class="px-4 sm:px-6 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-100">
-            <tr v-for="booking in recentBookings" :key="booking.id" class="hover:bg-slate-50">
-              <td class="px-4 py-3 text-sm font-medium text-slate-900">
+          <tbody class="divide-y divide-slate-50">
+            <tr v-for="booking in recentBookings" :key="booking.id"
+                class="hover:bg-slate-50/70 transition-colors duration-100">
+              <td class="px-4 sm:px-6 py-3.5 text-sm font-semibold text-slate-800">
                 {{ booking.customer }}
               </td>
-              <td class="px-4 py-3 text-sm text-slate-600">
+              <td class="px-4 py-3.5 text-sm text-slate-500">
                 {{ booking.property }}
               </td>
-              <td class="px-4 py-3 text-sm text-slate-600">
+              <td class="px-4 py-3.5 text-sm text-slate-500 whitespace-nowrap">
                 {{ booking.dates }}
               </td>
-              <td class="px-4 py-3">
+              <td class="px-4 py-3.5">
                 <span
-                  class="text-xs px-3 py-1 rounded-full font-medium"
+                  class="inline-flex items-center text-xs px-2.5 py-1 rounded-full font-semibold"
                   :class="getStatusClass(booking.status)"
                 >
                   {{ formatStatus(booking.status) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-4 sm:px-6 py-3.5 text-right">
                 <Link
                   :href="route('admin.bookings.show', booking.id)"
-                  class="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  class="text-xs font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
                 >
-                  Voir détails →
+                  Détails →
                 </Link>
               </td>
             </tr>
@@ -89,52 +90,54 @@
     </section>
 
     <!-- Résumé des biens et Revenus -->
-    <div class="grid gap-6 lg:grid-cols-2">
+    <div class="grid gap-4 sm:gap-6 lg:grid-cols-2">
       <!-- Résumé des résidences -->
-      <section class="bg-white border border-slate-200 rounded-2xl p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Building2 class="w-5 h-5" />
+      <section class="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+            <span class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+              <Building2 class="w-4 h-4" />
+            </span>
             Résidences
           </h2>
           <Link
             :href="route('admin.residences.index')"
-            class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            class="text-xs font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
           >
             Voir toutes →
           </Link>
         </div>
         <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-slate-500">Total</p>
-              <p class="text-2xl font-semibold text-slate-900">{{ formatNumber(stats.residences.total) }}</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-50/80 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total</p>
+              <p class="text-2xl font-bold text-slate-900 tracking-tight">{{ formatNumber(stats.residences.total) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Actives</p>
-              <p class="text-2xl font-semibold text-emerald-600">{{ formatNumber(stats.residences.active) }}</p>
+            <div class="bg-emerald-50/60 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Actives</p>
+              <p class="text-2xl font-bold text-emerald-600 tracking-tight">{{ formatNumber(stats.residences.active) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Inactives</p>
-              <p class="text-2xl font-semibold text-slate-600">{{ formatNumber(stats.residences.inactive) }}</p>
+            <div class="bg-slate-50/80 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Inactives</p>
+              <p class="text-2xl font-bold text-slate-500 tracking-tight">{{ formatNumber(stats.residences.inactive) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Sans photo</p>
-              <p class="text-2xl font-semibold text-amber-600">{{ formatNumber(stats.residences.withoutImage) }}</p>
+            <div class="bg-amber-50/60 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Sans photo</p>
+              <p class="text-2xl font-bold text-amber-600 tracking-tight">{{ formatNumber(stats.residences.withoutImage) }}</p>
             </div>
           </div>
-          <div v-if="stats.residences.last" class="pt-4 border-t border-slate-200">
-            <p class="text-sm text-slate-500 mb-1">Dernière résidence ajoutée</p>
+          <div v-if="stats.residences.last" class="pt-3 border-t border-slate-100">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Dernière ajoutée</p>
             <Link
               :href="route('admin.residences.show', stats.residences.last.id)"
-              class="text-sm font-medium text-blue-600 hover:text-blue-700"
+              class="text-sm font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
             >
               {{ stats.residences.last.name }}
             </Link>
           </div>
           <Link
             :href="route('admin.residences.create')"
-            class="block w-full mt-4 px-4 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 transition-colors"
+            class="flex items-center justify-center w-full mt-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold text-center rounded-xl hover:bg-blue-700 active:scale-[.99] transition-all duration-150 shadow-sm shadow-blue-200"
           >
             + Ajouter une résidence
           </Link>
@@ -142,53 +145,55 @@
       </section>
 
       <!-- Résumé des véhicules -->
-      <section class="bg-white border border-slate-200 rounded-2xl p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <Truck class="w-5 h-5" />
+      <section class="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+        <div class="flex items-center justify-between mb-5">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+            <span class="w-7 h-7 rounded-lg bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">
+              <Truck class="w-4 h-4" />
+            </span>
             Véhicules
           </h2>
           <Link
             :href="route('admin.vehicles.index')"
-            class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            class="text-xs font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
           >
             Voir tous →
           </Link>
         </div>
         <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <p class="text-sm text-slate-500">Total</p>
-              <p class="text-2xl font-semibold text-slate-900">{{ formatNumber(stats.vehicles.total) }}</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="bg-slate-50/80 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total</p>
+              <p class="text-2xl font-bold text-slate-900 tracking-tight">{{ formatNumber(stats.vehicles.total) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Disponibles</p>
-              <p class="text-2xl font-semibold text-emerald-600">{{ formatNumber(stats.vehicles.available) }}</p>
+            <div class="bg-emerald-50/60 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Disponibles</p>
+              <p class="text-2xl font-bold text-emerald-600 tracking-tight">{{ formatNumber(stats.vehicles.available) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Indisponibles</p>
-              <p class="text-2xl font-semibold text-slate-600">{{ formatNumber(stats.vehicles.unavailable) }}</p>
+            <div class="bg-slate-50/80 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Indisponibles</p>
+              <p class="text-2xl font-bold text-slate-500 tracking-tight">{{ formatNumber(stats.vehicles.unavailable) }}</p>
             </div>
-            <div>
-              <p class="text-sm text-slate-500">Sans photo</p>
-              <p class="text-2xl font-semibold text-amber-600">{{ formatNumber(stats.vehicles.withoutImage) }}</p>
+            <div class="bg-amber-50/60 rounded-xl p-3">
+              <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Sans photo</p>
+              <p class="text-2xl font-bold text-amber-600 tracking-tight">{{ formatNumber(stats.vehicles.withoutImage) }}</p>
             </div>
           </div>
-          <div v-if="stats.vehicles.last" class="pt-4 border-t border-slate-200">
-            <p class="text-sm text-slate-500 mb-1">Dernier véhicule ajouté</p>
+          <div v-if="stats.vehicles.last" class="pt-3 border-t border-slate-100">
+            <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Dernier ajouté</p>
             <Link
               :href="route('admin.vehicles.show', stats.vehicles.last.id)"
-              class="text-sm font-medium text-blue-600 hover:text-blue-700"
+              class="text-sm font-semibold text-brand hover:text-brand-dark transition-colors duration-150"
             >
               {{ stats.vehicles.last.name }}
             </Link>
           </div>
-          <div v-if="stats.vehicles.withoutPrice > 0" class="pt-2">
-            <p class="text-sm text-amber-600">⚠️ {{ stats.vehicles.withoutPrice }} véhicule(s) sans prix</p>
+          <div v-if="stats.vehicles.withoutPrice > 0" class="pt-1">
+            <p class="text-xs font-medium text-amber-600 bg-amber-50 rounded-lg px-3 py-2">⚠️ {{ stats.vehicles.withoutPrice }} véhicule(s) sans prix</p>
           </div>
           <Link
             :href="route('admin.vehicles.create')"
-            class="block w-full mt-4 px-4 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 transition-colors"
+            class="flex items-center justify-center w-full mt-1 px-4 py-2.5 bg-blue-600 text-white text-sm font-semibold text-center rounded-xl hover:bg-blue-700 active:scale-[.99] transition-all duration-150 shadow-sm shadow-blue-200"
           >
             + Ajouter un véhicule
           </Link>
@@ -197,55 +202,64 @@
     </div>
 
     <!-- Revenus & Performance -->
-    <section class="bg-white border border-slate-200 rounded-2xl p-6">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <DollarSign class="w-5 h-5" />
+    <section class="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+      <h2 class="text-sm font-bold text-slate-900 mb-5 flex items-center gap-2 tracking-tight">
+        <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+          <DollarSign class="w-4 h-4" />
+        </span>
         Revenus & Performance
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <p class="text-sm text-slate-500 mb-1">Revenus du jour</p>
-          <p class="text-2xl font-semibold text-slate-900">{{ formatPrice(stats.revenue.today) }} CFA</p>
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div class="bg-slate-50/80 rounded-xl p-3.5">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Aujourd'hui</p>
+          <p class="text-lg font-bold text-slate-900 tracking-tight leading-tight">{{ formatPrice(stats.revenue.today) }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5 font-medium">CFA</p>
         </div>
-        <div>
-          <p class="text-sm text-slate-500 mb-1">Revenus du mois</p>
-          <p class="text-2xl font-semibold text-emerald-600">{{ formatPrice(stats.revenue.month) }} CFA</p>
+        <div class="bg-emerald-50/60 rounded-xl p-3.5">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Ce mois</p>
+          <p class="text-lg font-bold text-emerald-600 tracking-tight leading-tight">{{ formatPrice(stats.revenue.month) }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5 font-medium">CFA</p>
         </div>
-        <div>
-          <p class="text-sm text-slate-500 mb-1">Revenus cumulés</p>
-          <p class="text-2xl font-semibold text-blue-600">{{ formatPrice(stats.revenue.total) }} CFA</p>
+        <div class="bg-blue-50/60 rounded-xl p-3.5">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Cumulé</p>
+          <p class="text-lg font-bold text-blue-600 tracking-tight leading-tight">{{ formatPrice(stats.revenue.total) }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5 font-medium">CFA</p>
         </div>
-        <div>
-          <p class="text-sm text-slate-500 mb-1">Réservations payées</p>
-          <p class="text-2xl font-semibold text-emerald-600">{{ formatNumber(stats.revenue.paidBookings) }}</p>
+        <div class="bg-emerald-50/60 rounded-xl p-3.5">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Payées</p>
+          <p class="text-lg font-bold text-emerald-600 tracking-tight">{{ formatNumber(stats.revenue.paidBookings) }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5 font-medium">réservations</p>
         </div>
-        <div>
-          <p class="text-sm text-slate-500 mb-1">Réservations non payées</p>
-          <p class="text-2xl font-semibold text-amber-600">{{ formatNumber(stats.revenue.unpaidBookings) }}</p>
+        <div class="bg-amber-50/60 rounded-xl p-3.5">
+          <p class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Non payées</p>
+          <p class="text-lg font-bold text-amber-600 tracking-tight">{{ formatNumber(stats.revenue.unpaidBookings) }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5 font-medium">réservations</p>
         </div>
       </div>
     </section>
 
-    <!-- Alertes & Actions rapides -->
-    <section v-if="alerts.length > 0" class="bg-white border border-slate-200 rounded-2xl p-6">
-      <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <AlertCircle class="w-5 h-5" />
+    <!-- Alertes & Actions requises -->
+    <section v-if="alerts.length > 0" class="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+      <h2 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2 tracking-tight">
+        <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+          <AlertCircle class="w-4 h-4" />
+        </span>
         Alertes & Actions requises
       </h2>
-      <div class="space-y-3">
+      <div class="space-y-2.5">
         <div
           v-for="(alert, index) in alerts"
           :key="index"
-          class="flex items-center justify-between p-4 rounded-lg border"
+          class="flex items-center justify-between gap-4 px-4 py-3.5 rounded-xl border"
           :class="getAlertClass(alert.type)"
         >
-          <div class="flex items-center gap-3">
-            <AlertCircle class="w-5 h-5" :class="getAlertIconClass(alert.type)" />
-            <p class="font-medium">{{ alert.message }}</p>
+          <div class="flex items-center gap-3 min-w-0">
+            <AlertCircle class="w-4 h-4 flex-shrink-0" :class="getAlertIconClass(alert.type)" />
+            <p class="text-sm font-medium truncate">{{ alert.message }}</p>
           </div>
           <Link
             :href="alert.href"
-            class="px-4 py-2 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium"
+            class="flex-shrink-0 px-3 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors duration-150 shadow-sm"
           >
             {{ alert.action }}
           </Link>
@@ -254,36 +268,52 @@
     </section>
 
     <!-- Raccourcis rapides -->
-    <section class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6">
-      <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4">Raccourcis rapides</h2>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+    <section class="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_4px_12px_rgba(0,0,0,0.04)]">
+      <h2 class="text-sm font-bold text-slate-900 mb-4 tracking-tight">Raccourcis rapides</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link
           :href="route('admin.residences.create')"
-          class="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          class="group flex flex-col items-center justify-center gap-2.5 p-4 border border-slate-200/80 rounded-xl
+                 hover:border-blue-200 hover:bg-blue-50/50 hover:-translate-y-px hover:shadow-sm
+                 transition-all duration-150"
         >
-          <Building2 class="w-6 h-6 text-blue-600 mb-2" />
-          <span class="text-sm font-medium text-slate-700">Ajouter une résidence</span>
+          <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-150">
+            <Building2 class="w-5 h-5" />
+          </div>
+          <span class="text-xs font-semibold text-slate-600 text-center leading-tight group-hover:text-slate-800">Ajouter une résidence</span>
         </Link>
         <Link
           :href="route('admin.vehicles.create')"
-          class="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          class="group flex flex-col items-center justify-center gap-2.5 p-4 border border-slate-200/80 rounded-xl
+                 hover:border-brand/30 hover:bg-brand/5 hover:-translate-y-px hover:shadow-sm
+                 transition-all duration-150"
         >
-          <Truck class="w-6 h-6 text-blue-600 mb-2" />
-          <span class="text-sm font-medium text-slate-700">Ajouter un véhicule</span>
+          <div class="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center group-hover:bg-brand/15 transition-colors duration-150">
+            <Truck class="w-5 h-5" />
+          </div>
+          <span class="text-xs font-semibold text-slate-600 text-center leading-tight group-hover:text-slate-800">Ajouter un véhicule</span>
         </Link>
         <Link
           :href="route('admin.combo-offers.create')"
-          class="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          class="group flex flex-col items-center justify-center gap-2.5 p-4 border border-slate-200/80 rounded-xl
+                 hover:border-blue-200 hover:bg-blue-50/50 hover:-translate-y-px hover:shadow-sm
+                 transition-all duration-150"
         >
-          <Package class="w-6 h-6 text-blue-600 mb-2" />
-          <span class="text-sm font-medium text-slate-700">Créer une offre</span>
+          <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-150">
+            <Package class="w-5 h-5" />
+          </div>
+          <span class="text-xs font-semibold text-slate-600 text-center leading-tight group-hover:text-slate-800">Créer une offre</span>
         </Link>
         <Link
           :href="route('admin.bookings.index')"
-          class="flex flex-col items-center justify-center p-4 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          class="group flex flex-col items-center justify-center gap-2.5 p-4 border border-slate-200/80 rounded-xl
+                 hover:border-blue-200 hover:bg-blue-50/50 hover:-translate-y-px hover:shadow-sm
+                 transition-all duration-150"
         >
-          <Calendar class="w-6 h-6 text-blue-600 mb-2" />
-          <span class="text-sm font-medium text-slate-700">Voir les réservations</span>
+          <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors duration-150">
+            <Calendar class="w-5 h-5" />
+          </div>
+          <span class="text-xs font-semibold text-slate-600 text-center leading-tight group-hover:text-slate-800">Voir les réservations</span>
         </Link>
       </div>
     </section>
