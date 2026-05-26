@@ -414,7 +414,7 @@ class OwnerVehicleController extends Controller
 
         try {
             $this->apiService->updateVehicle($id, ['isActive' => true]);
-            return redirect()->route('owner.vehicles.archived')
+            return redirect()->route('owner.vehicles.index')
                 ->with('success', 'Véhicule réactivé avec succès.');
         } catch (\Exception $e) {
             Log::error('Erreur réactivation véhicule', ['id' => $id, 'error' => $e->getMessage()]);
