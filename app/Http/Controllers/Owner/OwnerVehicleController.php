@@ -730,7 +730,7 @@ class OwnerVehicleController extends Controller
     /**
      * Activer ou désactiver un véhicule (bascule isActive)
      */
-    public function toggleActive(string $id): RedirectResponse
+    public function toggleActive(Request $request, string $id): RedirectResponse
     {
         $user = Auth::user();
         if (!$user) {
@@ -742,13 +742,8 @@ class OwnerVehicleController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        $vehicle = $this->apiService->getVehicle($id);
-        if (!$vehicle) {
-            abort(404, 'Véhicule non trouvé');
-        }
-
-        $currentActive = $vehicle['isActive'] ?? $vehicle['is_active'] ?? true;
-        $newActive = !$currentActive;
+        // new_active vient du formulaire Vue (évite un GET /vehicles/{id} qui peut échouer avec le JWT owner)
+        $newActive = filter_var($request->input('new_active', '0'), FILTER_VALIDATE_BOOLEAN);
 
         try {
             $this->apiService->updateVehicle($id, ['isActive' => $newActive]);

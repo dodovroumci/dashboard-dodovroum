@@ -70,6 +70,7 @@
               <form :action="`/owner/vehicles/${vehicle?.id}/toggle-active`" method="POST">
                 <input type="hidden" name="_token" :value="csrfToken()" />
                 <input type="hidden" name="_method" value="PATCH" />
+                <input type="hidden" name="new_active" :value="vehicle?.isActive !== false ? '0' : '1'" />
                 <button
                   type="submit"
                   class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 touch-manipulation"
@@ -338,6 +339,7 @@
         <form :action="`/owner/vehicles/${vehicle?.id}/toggle-active`" method="POST">
           <input type="hidden" name="_token" :value="csrfToken()" />
           <input type="hidden" name="_method" value="PATCH" />
+          <input type="hidden" name="new_active" :value="vehicle?.isActive !== false ? '0' : '1'" />
           <button
             type="submit"
             class="px-4 py-2 bg-white rounded-lg flex items-center justify-center gap-2"
