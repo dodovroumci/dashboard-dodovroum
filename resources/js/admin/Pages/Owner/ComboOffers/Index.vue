@@ -234,14 +234,22 @@
                           <Pencil class="w-4 h-4" />
                           Modifier (non autorisé)
                         </button>
-                        <button
+                        <form
                           v-if="offer.canEdit !== false"
-                          @click="confirmDelete(offer); closeMenu(offer.id)"
-                          class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          :action="`/owner/combo-offers/${offer.id}`"
+                          method="POST"
+                          @submit="confirmAndSubmit"
                         >
-                          <Trash2 class="w-4 h-4" />
-                          Supprimer
-                        </button>
+                          <input type="hidden" name="_token" :value="csrfToken()" />
+                          <input type="hidden" name="_method" value="DELETE" />
+                          <button
+                            type="submit"
+                            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 class="w-4 h-4" />
+                            Supprimer
+                          </button>
+                        </form>
                         <button
                           v-else
                           disabled
@@ -270,35 +278,6 @@
       :filters="filters"
     />
 
-    <!-- Modal de confirmation de suppression -->
-    <div
-      v-if="offerToDelete"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="offerToDelete = null"
-    >
-      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold mb-4">Confirmer la suppression</h3>
-        <p class="text-slate-600 mb-6">
-          Êtes-vous sûr de vouloir supprimer l'offre combinée
-          <strong>{{ offerToDelete.title || offerToDelete.name || 'cette offre' }}</strong> ?
-          Cette action est irréversible.
-        </p>
-        <div class="flex justify-end gap-3">
-          <button
-            @click="offerToDelete = null"
-            class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
-          >
-            Annuler
-          </button>
-          <button
-            @click="deleteOffer"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Supprimer
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -364,6 +343,13 @@ const props = defineProps<{
 
 const page = usePage();
 const error = computed(() => props.error || page.props.error);
+const csrfToken = () => (page.props as any).csrf_token as string;
+
+const confirmAndSubmit = (event: Event) => {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.')) {
+    event.preventDefault();
+  }
+};
 
 // Gestion des images
 const imageErrors = ref<Record<string | number, boolean>>({});
@@ -568,24 +554,5 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 
-// Gestion de la suppression
-const offerToDelete = ref<typeof props.comboOffers[0] | null>(null);
-
-const confirmDelete = (offer: typeof props.comboOffers[0]) => {
-  offerToDelete.value = offer;
-};
-
-const deleteOffer = () => {
-  if (!offerToDelete.value) return;
-  
-  router.delete(`/owner/combo-offers/${offerToDelete.value.id}`, {
-    onSuccess: () => {
-      offerToDelete.value = null;
-    },
-    onError: () => {
-      offerToDelete.value = null;
-    },
-  });
-};
 </script>
 

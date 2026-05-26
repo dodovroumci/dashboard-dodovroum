@@ -58,14 +58,22 @@
             class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 py-1"
           >
             <div class="py-1">
-              <button
+              <form
                 v-if="comboOffer?.canEdit !== false"
-                @click="confirmDelete"
-                class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 touch-manipulation"
+                :action="`/owner/combo-offers/${comboOffer?.id}`"
+                method="POST"
+                @submit="confirmAndSubmit"
               >
-                <Trash2 class="w-4 h-4" />
-                Supprimer
-              </button>
+                <input type="hidden" name="_token" :value="csrfToken()" />
+                <input type="hidden" name="_method" value="DELETE" />
+                <button
+                  type="submit"
+                  class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 touch-manipulation"
+                >
+                  <Trash2 class="w-4 h-4" />
+                  Supprimer
+                </button>
+              </form>
               <button
                 v-else
                 disabled
@@ -421,14 +429,22 @@
               <Pencil class="w-4 h-4" />
               Modifier l'offre
             </Link>
-            <button
+            <form
               v-if="comboOffer?.canEdit !== false"
-              @click="confirmDelete"
-              class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+              :action="`/owner/combo-offers/${comboOffer?.id}`"
+              method="POST"
+              @submit="confirmAndSubmit"
             >
-              <Trash2 class="w-4 h-4" />
-              Supprimer l'offre
-            </button>
+              <input type="hidden" name="_token" :value="csrfToken()" />
+              <input type="hidden" name="_method" value="DELETE" />
+              <button
+                type="submit"
+                class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2"
+              >
+                <Trash2 class="w-4 h-4" />
+                Supprimer l'offre
+              </button>
+            </form>
           </div>
         </section>
       </div>
@@ -484,40 +500,11 @@
       </div>
     </div>
 
-    <!-- Modal de confirmation de suppression -->
-    <div
-      v-if="showDeleteModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="showDeleteModal = false"
-    >
-      <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
-        <h3 class="text-lg font-semibold mb-4">Confirmer la suppression</h3>
-        <p class="text-slate-600 mb-6">
-          Êtes-vous sûr de vouloir supprimer l'offre combinée
-          <strong>{{ comboOffer?.title || comboOffer?.name || 'cette offre' }}</strong> ?
-          Cette action est irréversible.
-        </p>
-        <div class="flex justify-end gap-3">
-          <button
-            @click="showDeleteModal = false"
-            class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
-          >
-            Annuler
-          </button>
-          <button
-            @click="deleteOffer"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Supprimer
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import OwnerLayout from '../../../Components/Layouts/OwnerLayout.vue';
 import AvailabilityCalendar from '../../../Components/AvailabilityCalendar.vue';
@@ -585,7 +572,15 @@ const props = defineProps<{
 }>();
 
 const showActionsMenu = ref(false);
-const showDeleteModal = ref(false);
+
+const page = usePage();
+const csrfToken = () => (page.props as any).csrf_token as string;
+
+const confirmAndSubmit = (event: Event) => {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette offre ? Cette action est irréversible.')) {
+    event.preventDefault();
+  }
+};
 
 // Toggle menu actions
 const toggleActionsMenu = () => {
@@ -726,25 +721,6 @@ const bookingsForCalendar = computed(() => {
     statusRaw: booking.statusRaw || booking.status?.toLowerCase(),
   })).filter(b => b.startDate && b.endDate);
 });
-
-// Gestion de la suppression
-const confirmDelete = () => {
-  showDeleteModal.value = true;
-  showActionsMenu.value = false;
-};
-
-const deleteOffer = () => {
-  if (!props.comboOffer?.id) return;
-  
-  router.delete(`/owner/combo-offers/${props.comboOffer.id}`, {
-    onSuccess: () => {
-      showDeleteModal.value = false;
-    },
-    onError: () => {
-      showDeleteModal.value = false;
-    },
-  });
-};
 
 // Formatage
 const formatPrice = (price: number): string => {
