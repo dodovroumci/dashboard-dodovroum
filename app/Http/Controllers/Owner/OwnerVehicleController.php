@@ -115,36 +115,32 @@ class OwnerVehicleController extends Controller
             $filteredOutCount = 0;
             
             foreach ($allVehicles as $index => $vehicle) {
-                // Extraire le proprietaireId comme dans AdminComboOfferController
-                $proprietaireId = null;
-                
+                $vehicleOwnerId = null;
+
                 if (isset($vehicle['proprietaire']) && is_array($vehicle['proprietaire'])) {
-                    $proprietaireId = $vehicle['proprietaire']['id'] ?? $vehicle['proprietaire']['_id'] ?? null;
+                    $vehicleOwnerId = $vehicle['proprietaire']['id'] ?? $vehicle['proprietaire']['_id'] ?? null;
                 }
-                
-                if (!$proprietaireId && isset($vehicle['owner']) && is_array($vehicle['owner'])) {
-                    $proprietaireId = $vehicle['owner']['id'] ?? $vehicle['owner']['_id'] ?? null;
+
+                if (!$vehicleOwnerId && isset($vehicle['owner']) && is_array($vehicle['owner'])) {
+                    $vehicleOwnerId = $vehicle['owner']['id'] ?? $vehicle['owner']['_id'] ?? null;
                 }
-                
-                if (!$proprietaireId) {
-                    $proprietaireId = $vehicle['proprietaireId'] ?? $vehicle['ownerId'] ?? $vehicle['userId'] ?? null;
+
+                if (!$vehicleOwnerId) {
+                    $vehicleOwnerId = $vehicle['proprietaireId'] ?? $vehicle['ownerId'] ?? $vehicle['userId'] ?? null;
                 }
-                
-                if (!$proprietaireId && isset($vehicle['proprietaire']) && is_string($vehicle['proprietaire'])) {
-                    $proprietaireId = $vehicle['proprietaire'];
+
+                if (!$vehicleOwnerId && isset($vehicle['proprietaire']) && is_string($vehicle['proprietaire'])) {
+                    $vehicleOwnerId = $vehicle['proprietaire'];
                 }
-                
-                
-                // Si le propriétaire correspond, ajouter le véhicule
-                // Comparer en string ET en int pour gérer les cas où l'un est string et l'autre int
+
                 $matches = false;
-                if ($proprietaireId && isset($apiFilters['ownerId'])) {
+                if ($vehicleOwnerId && isset($apiFilters['ownerId'])) {
                     $matches = (
-                        (string) $proprietaireId === (string) $apiFilters['ownerId'] ||
-                        (int) $proprietaireId === (int) $apiFilters['ownerId']
+                        (string) $vehicleOwnerId === (string) $apiFilters['ownerId'] ||
+                        (is_numeric($vehicleOwnerId) && is_numeric($apiFilters['ownerId']) && (int) $vehicleOwnerId === (int) $apiFilters['ownerId'])
                     );
                 }
-                
+
                 if ($matches) {
                     $vehicles[] = $vehicle;
                 } else {
@@ -251,12 +247,14 @@ class OwnerVehicleController extends Controller
                 $vehicles = array_values($vehicles);
             }
             
-            // Ajouter un flag canEdit pour chaque véhicule
-            // Utiliser le proprietaireId réel pour la comparaison
-            $vehiclesWithCanEdit = array_map(function($vehicle) use ($proprietaireId) {
-                $vehicleOwnerId = (string) ($vehicle['proprietaireId'] ?? $vehicle['ownerId'] ?? null);
-                // Si le proprietaireId du véhicule correspond au proprietaireId de l'utilisateur connecté, on peut modifier
-                $vehicle['canEdit'] = !empty($vehicleOwnerId) && (string) $vehicleOwnerId === (string) $proprietaireId;
+            // Tous les véhicules de la liste ont déjà été filtrés pour appartenir au propriétaire
+            $userProprietaireId = $proprietaireId;
+            $vehiclesWithCanEdit = array_map(function($vehicle) use ($userProprietaireId) {
+                $vOwnerId = (string) ($vehicle['proprietaireId'] ?? $vehicle['ownerId'] ?? null);
+                $vehicle['canEdit'] = !empty($vOwnerId) && (
+                    $vOwnerId === (string) $userProprietaireId
+                    || (is_numeric($vOwnerId) && is_numeric($userProprietaireId) && (int) $vOwnerId === (int) $userProprietaireId)
+                );
                 return $vehicle;
             }, $vehicles);
             
@@ -531,15 +529,28 @@ class OwnerVehicleController extends Controller
                 abort(403, 'Accès non autorisé');
             }
             
-            // Récupérer le véhicule via le token propriétaire (liste puis recherche par ID)
-            // GET /vehicles/:id peut ne pas exister côté API, donc on utilise VehicleService::find()
             $mappedVehicle = $this->vehicleService->find($id);
-            
+
             if (!$mappedVehicle) {
                 abort(404, 'Véhicule non trouvé');
             }
-            
-            // Déjà filtré par le token propriétaire, donc canEdit = true
+
+            // Vérifier que le véhicule appartient bien au propriétaire connecté
+            $vehicleOwnerId = $mappedVehicle['proprietaireId'] ?? null;
+            if ($vehicleOwnerId) {
+                $ownerMatches = (string) $vehicleOwnerId === (string) $proprietaireId
+                    || (is_numeric($vehicleOwnerId) && is_numeric($proprietaireId) && (int) $vehicleOwnerId === (int) $proprietaireId);
+                if (!$ownerMatches) {
+                    Log::warning('Accès non autorisé au véhicule', [
+                        'vehicle_id' => $id,
+                        'user_id' => $user->getAuthIdentifier(),
+                        'vehicle_proprietaireId' => $vehicleOwnerId,
+                        'expected_proprietaireId' => $proprietaireId,
+                    ]);
+                    abort(403, 'Vous n\'êtes pas autorisé à voir ce véhicule');
+                }
+            }
+
             $mappedVehicle['canEdit'] = true;
             
             // Ajouter les dates bloquées depuis l'endpoint dédié
