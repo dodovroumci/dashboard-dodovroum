@@ -123,31 +123,11 @@ class OwnerComboOfferController extends Controller
                 $offers = array_values($offers);
             }
             
-            // Filtrer par statut si nécessaire
+            // Filtrer par statut (utilise normalizeStatut pour comparer 'active'|'expiree'|'inactive')
             if (!empty($filters['status'])) {
                 $statusFilter = strtolower($filters['status']);
-                $offers = array_filter($offers, function($offer) use ($statusFilter) {
-                    // Déterminer si l'offre est active
-                    $isActive = $offer['isActive'] ?? $offer['is_active'] ?? $offer['available'] ?? true;
-                    
-                    // Convertir en booléen si c'est une chaîne
-                    if (is_string($isActive)) {
-                        $isActive = in_array(strtolower($isActive), ['true', '1', 'yes', 'active']);
-                    }
-                    
-                    // Vérifier aussi le champ status s'il existe
-                    $status = strtolower($offer['status'] ?? '');
-                    if ($status) {
-                        $isActive = ($status === 'active') ? true : (($status === 'inactive') ? false : $isActive);
-                    }
-                    
-                    if ($statusFilter === 'active') {
-                        return $isActive === true;
-                    } elseif ($statusFilter === 'inactive') {
-                        return $isActive === false;
-                    }
-                    
-                    return true;
+                $offers = array_filter($offers, function ($offer) use ($statusFilter) {
+                    return $this->normalizeStatut($offer) === $statusFilter;
                 });
                 $offers = array_values($offers);
             }
@@ -268,7 +248,7 @@ class OwnerComboOfferController extends Controller
                     'imageUrl' => $offer['imageUrl'] ?? $offer['image_url'] ?? $offer['image'] ?? null,
                     'startDate' => $offer['validFrom'] ?? $offer['valid_from'] ?? $offer['startDate'] ?? null,
                     'endDate' => $offer['validTo'] ?? $offer['valid_to'] ?? $offer['endDate'] ?? null,
-                    'status' => $offer['status'] ?? 'active',
+                    'status' => $this->normalizeStatut($offer),
                     'available' => $offer['available'] ?? true,
                     'isActive' => $offer['isActive'] ?? $offer['is_active'] ?? true,
                     'isVerified' => $offer['isVerified'] ?? $offer['is_verified'] ?? false,
@@ -1551,6 +1531,22 @@ class OwnerComboOfferController extends Controller
             ]);
             return response()->json(['error' => 'Erreur lors du déblocage de la date'], 500);
         }
+    }
+
+    /**
+     * Normalise le champ `statut` NestJS → clé frontend uniforme.
+     * NestJS retourne : statut = 'ACTIVE' | 'EXPIREE' | 'INACTIVE'
+     * Fallback sur isActive si le champ est absent (anciennes données).
+     */
+    protected function normalizeStatut(array $offer): string
+    {
+        $statut = strtoupper(trim($offer['statut'] ?? ''));
+        return match ($statut) {
+            'ACTIVE'   => 'active',
+            'EXPIREE'  => 'expiree',
+            'INACTIVE' => 'inactive',
+            default    => ($offer['isActive'] ?? $offer['is_active'] ?? true) ? 'active' : 'inactive',
+        };
     }
 }
 

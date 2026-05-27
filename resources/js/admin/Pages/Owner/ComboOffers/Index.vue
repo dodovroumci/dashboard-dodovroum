@@ -69,7 +69,8 @@
         <select v-model="filters.status" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
           <option value="">Tous les statuts</option>
           <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
+          <option value="expiree">Expirée</option>
+          <option value="inactive">Désactivée</option>
         </select>
         <div class="flex gap-2">
           <button
@@ -145,7 +146,7 @@
             v-for="offer in visibleOffers"
             :key="offer.id"
             class="cursor-pointer transition-colors"
-            :class="isExpired(offer.endDate)
+            :class="isExpiredStatus(offer.status)
               ? 'bg-slate-50/80 opacity-70 hover:opacity-90'
               : 'hover:bg-slate-50'"
             @click="goToOffer(offer)"
@@ -154,7 +155,7 @@
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-lg flex-shrink-0 overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center"
-                  :class="isExpired(offer.endDate) ? 'grayscale' : ''">
+                  :class="isExpiredStatus(offer.status) ? 'grayscale' : ''">
                   <img
                     v-if="getOfferImage(offer) && !imageErrors[offer.id]"
                     :src="getStorageImageUrl(getOfferImage(offer))"
@@ -166,7 +167,7 @@
                   <Package v-else class="w-6 h-6 text-slate-400" />
                 </div>
                 <div class="min-w-0">
-                  <div class="text-sm font-medium" :class="isExpired(offer.endDate) ? 'text-slate-500' : 'text-slate-900'">
+                  <div class="text-sm font-medium" :class="isExpiredStatus(offer.status) ? 'text-slate-500' : 'text-slate-900'">
                     {{ offer.title || offer.name || 'Offre sans nom' }}
                   </div>
                   <div v-if="offer.description" class="text-xs text-slate-400 truncate max-w-xs">
@@ -177,40 +178,40 @@
             </td>
             <!-- Résidence -->
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm" :class="isExpired(offer.endDate) ? 'text-slate-400' : 'text-slate-900'">
+              <div class="text-sm" :class="isExpiredStatus(offer.status) ? 'text-slate-400' : 'text-slate-900'">
                 {{ getResidenceName(offer) }}
               </div>
             </td>
             <!-- Véhicule -->
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm" :class="isExpired(offer.endDate) ? 'text-slate-400' : 'text-slate-900'">
+              <div class="text-sm" :class="isExpiredStatus(offer.status) ? 'text-slate-400' : 'text-slate-900'">
                 {{ getVehicleName(offer) }}
               </div>
             </td>
             <!-- Prix -->
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm font-medium" :class="isExpired(offer.endDate) ? 'text-slate-400' : 'text-slate-900'">
+              <div class="text-sm font-medium" :class="isExpiredStatus(offer.status) ? 'text-slate-400' : 'text-slate-900'">
                 {{ formatPrice(offer.discountedPrice || offer.price || 0) }} CFA
               </div>
               <div v-if="offer.originalPrice && offer.discountedPrice && offer.originalPrice > offer.discountedPrice"
                 class="text-xs text-slate-400 line-through">
                 {{ formatPrice(offer.originalPrice) }} CFA
               </div>
-              <div v-if="(offer.discount || offer.discountPercentage) && !isExpired(offer.endDate)"
+              <div v-if="(offer.discount || offer.discountPercentage) && !isExpiredStatus(offer.status)"
                 class="text-xs text-emerald-600">
                 -{{ offer.discount || offer.discountPercentage }}%
               </div>
             </td>
             <!-- Dates -->
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="text-sm" :class="isExpired(offer.endDate) ? 'text-slate-400' : 'text-slate-700'">
+              <div class="text-sm" :class="isExpiredStatus(offer.status) ? 'text-slate-400' : 'text-slate-700'">
                 {{ formatDates(offer.startDate, offer.endDate) }}
               </div>
             </td>
             <!-- Statut -->
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex flex-col gap-1">
-                <span v-if="isExpired(offer.endDate)"
+                <span v-if="isExpiredStatus(offer.status)"
                   class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 w-fit">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -220,8 +221,8 @@
                 </span>
                 <span v-else
                   class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full w-fit"
-                  :class="getStatusClass(offer.status ?? (offer.available ? 'active' : 'inactive'))">
-                  {{ getStatusLabel(offer.status ?? (offer.available ? 'active' : 'inactive')) }}
+                  :class="getStatusClass(offer.status)">
+                  {{ getStatusLabel(offer.status) }}
                 </span>
               </div>
             </td>
@@ -235,7 +236,7 @@
                     class="p-1 rounded-md transition"
                     :class="openMenus.has(offer.id)
                       ? 'bg-slate-100 text-slate-900'
-                      : isExpired(offer.endDate)
+                      : isExpiredStatus(offer.status)
                         ? 'text-slate-300 hover:text-slate-400 hover:bg-slate-100'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
                   >
@@ -259,7 +260,7 @@
                           Voir
                         </Link>
                         <!-- Modifier / Supprimer : désactivés si expiré -->
-                        <template v-if="!isExpired(offer.endDate) && offer.canEdit !== false">
+                        <template v-if="!isExpiredStatus(offer.status) && offer.canEdit !== false">
                           <Link
                             :href="`/owner/combo-offers/${offer.id}/edit`"
                             @click="closeMenu(offer.id)"
@@ -288,11 +289,11 @@
                         <template v-else>
                           <span class="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 cursor-not-allowed">
                             <Pencil class="w-4 h-4" />
-                            {{ isExpired(offer.endDate) ? 'Modifier (expiré)' : 'Modifier (non autorisé)' }}
+                            {{ isExpiredStatus(offer.status) ? 'Modifier (expiré)' : 'Modifier (non autorisé)' }}
                           </span>
                           <span class="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 cursor-not-allowed">
                             <Trash2 class="w-4 h-4" />
-                            {{ isExpired(offer.endDate) ? 'Supprimer (expiré)' : 'Supprimer (non autorisé)' }}
+                            {{ isExpiredStatus(offer.status) ? 'Supprimer (expiré)' : 'Supprimer (non autorisé)' }}
                           </span>
                         </template>
                       </div>
@@ -449,34 +450,42 @@ const formatPrice = (price: number): string => {
   return new Intl.NumberFormat('fr-FR').format(price);
 };
 
-// ── Gestion des offres expirées ──────────────────────────────────────────────
+// ── Statut depuis le backend (pas de calcul de date côté frontend) ───────────
 
-const parseLocalDate = (dateStr: string): Date => {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d, 23, 59, 59);
-  }
-  return new Date(dateStr);
-};
-
-const isExpired = (endDate?: string | null): boolean => {
-  if (!endDate) return false;
-  return parseLocalDate(endDate) < new Date();
-};
+const isExpiredStatus = (status?: string | null): boolean =>
+  (status ?? '').toLowerCase() === 'expiree';
 
 const hideExpired = ref(true);
 
 const expiredCount = computed(() =>
-  props.comboOffers.filter(o => isExpired(o.endDate)).length
+  props.comboOffers.filter(o => isExpiredStatus(o.status)).length
 );
 
 const visibleOffers = computed(() =>
   hideExpired.value
-    ? props.comboOffers.filter(o => !isExpired(o.endDate))
+    ? props.comboOffers.filter(o => !isExpiredStatus(o.status))
     : props.comboOffers
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+const STATUS_CLASS: Record<string, string> = {
+  active:   'bg-emerald-100 text-emerald-700',
+  expiree:  'bg-red-100 text-red-700',
+  inactive: 'bg-slate-100 text-slate-600',
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  active:   'Active',
+  expiree:  'Expirée',
+  inactive: 'Désactivée',
+};
+
+/** Parse YYYY-MM-DD en heure locale (évite le bug UTC) */
+const parseLocalDate = (s: string): Date => {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(s);
+};
 
 const formatDates = (startDate?: string, endDate?: string): string => {
   if (!startDate || !endDate) return 'Non spécifié';
@@ -522,20 +531,14 @@ const getVehicleName = (offer: any): string => {
   return 'Véhicule non spécifié';
 };
 
-const getStatusClass = (status: string): string => {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'active') {
-    return 'bg-emerald-100 text-emerald-700';
-  }
-  return 'bg-slate-100 text-slate-700';
+const getStatusClass = (status?: string | null): string => {
+  const key = (status ?? '').toLowerCase();
+  return STATUS_CLASS[key] ?? STATUS_CLASS.inactive;
 };
 
-const getStatusLabel = (status: string): string => {
-  const statusLower = status.toLowerCase();
-  if (statusLower === 'active') {
-    return 'Active';
-  }
-  return 'Inactive';
+const getStatusLabel = (status?: string | null): string => {
+  const key = (status ?? '').toLowerCase();
+  return STATUS_LABEL[key] ?? (status ?? 'Inconnu');
 };
 
 // Gestion du menu d'actions

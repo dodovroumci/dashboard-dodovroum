@@ -205,7 +205,7 @@ class AdminComboOfferController extends Controller
                     'images' => $this->normalizeImages($offer),
                     'isActive' => $offer['isActive'] ?? $offer['is_active'] ?? true,
                     'isVerified' => $offer['isVerified'] ?? $offer['is_verified'] ?? false,
-                    'status' => ($offer['isActive'] ?? true) ? 'active' : 'inactive',
+                    'status' => $this->normalizeStatut($offer),
                 ];
             }, $offers);
             
@@ -1668,6 +1668,22 @@ class AdminComboOfferController extends Controller
 
             return back()->with('error', 'Erreur lors de la suppression de l\'offre combinée: ' . $errorMessage);
         }
+    }
+
+    /**
+     * Normalise le champ `statut` NestJS → clé frontend uniforme.
+     * NestJS retourne : statut = 'ACTIVE' | 'EXPIREE' | 'INACTIVE'
+     * Fallback sur isActive si le champ est absent (anciennes données).
+     */
+    protected function normalizeStatut(array $offer): string
+    {
+        $statut = strtoupper(trim($offer['statut'] ?? ''));
+        return match ($statut) {
+            'ACTIVE'   => 'active',
+            'EXPIREE'  => 'expiree',
+            'INACTIVE' => 'inactive',
+            default    => ($offer['isActive'] ?? $offer['is_active'] ?? true) ? 'active' : 'inactive',
+        };
     }
 
     /**
