@@ -69,6 +69,9 @@ class OwnerResidenceController extends Controller
             if (!empty($filters['status'])) {
                 $apiFilters['status'] = $filters['status'];
             }
+            if (!empty($filters['type'])) {
+                $apiFilters['typeResidence'] = $filters['type'];
+            }
 
             try {
                 $allResidences = $this->residenceService->all($apiFilters);

@@ -40,11 +40,11 @@ class AdminResidenceController extends Controller
                 'filters' => $filters,
             ]);
             
-            // L'API supporte maintenant le filtre 'status' basé sur les réservations actives
-            // On passe 'status' à l'API, mais on filtre 'type' côté serveur car l'API ne l'accepte pas
+            // L'API supporte les filtres 'search', 'status' et 'typeResidence'
             $apiFilters = array_filter([
                 'search' => $filters['search'] ?? null,
-                'status' => $filters['status'] ?? null, // L'API gère maintenant ce filtre
+                'status' => $filters['status'] ?? null,
+                'typeResidence' => $filters['type'] ?? null, // Déléguer à l'API (filtre natif NestJS)
             ], function($value) {
                 return $value !== null && $value !== '';
             });
