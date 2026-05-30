@@ -260,6 +260,10 @@ class ResidenceService extends BaseApiService
         unset($dataForApi['proprietaireId']);
         unset($dataForApi['owner_id']);
         unset($dataForApi['proprietaire_id']);
+
+        // ⚠️ Le DTO NestJS UpdateResidenceDto interdit 'isVerified' (whitelist strict)
+        // → HTTP 400 "property isVerified should not exist"
+        unset($dataForApi['isVerified']);
         
         // Ajouter la localisation si les coordonnées sont fournies
         if (isset($data['latitude']) && isset($data['longitude'])) {
