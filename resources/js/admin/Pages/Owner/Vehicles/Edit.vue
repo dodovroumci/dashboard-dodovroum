@@ -415,7 +415,7 @@ const form = useForm({
   brand: props.vehicle?.brand ?? '',
   model: props.vehicle?.model ?? '',
   year: props.vehicle?.year ?? new Date().getFullYear(),
-  type: props.vehicle?.type ?? '',
+  type: props.vehicle?.type?.toLowerCase() ?? '',
   seats: props.vehicle?.seats ?? 5,
   plateNumber: props.vehicle?.plateNumber ?? props.vehicle?.plate_number ?? '',
   pricePerDay: props.vehicle?.pricePerDay ?? props.vehicle?.price_per_day ?? props.vehicle?.price ?? 0,
