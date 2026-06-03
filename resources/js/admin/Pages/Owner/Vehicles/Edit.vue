@@ -403,11 +403,13 @@ const vehicleDisplayName = computed(() => {
 
 // Utiliser les types depuis l'API ou les types par défaut
 const vehicleTypes = computed(() => props.vehicleTypes || [
-  { value: 'berline', label: 'Berline' },
-  { value: 'suv', label: 'SUV' },
-  { value: '4x4', label: '4x4' },
-  { value: 'utilitaire', label: 'Utilitaire' },
-  { value: 'moto', label: 'Moto' },
+  { value: 'berline',    label: 'Berline' },
+  { value: 'suv',        label: 'SUV' },
+  { value: '4x4',        label: '4x4' },
+  { value: 'utilitaire', label: 'Utilitaire / Van' },
+  { value: 'moto',       label: 'Moto' },
+  { value: 'citadine',   label: 'Citadine' },
+  { value: 'luxe',       label: 'Luxe' },
 ]);
 
 const form = useForm({

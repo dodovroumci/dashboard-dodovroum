@@ -78,15 +78,20 @@ class VehicleMapper
         if (!empty($type)) {
             // Normaliser les valeurs - aligné avec l'API NestJS
             $typeMap = [
-                'berline' => 'Berline',
-                'suv' => 'SUV',
-                '4x4' => '4x4',
+                // Valeurs API NestJS (uppercase stockées en base)
+                'car'        => 'Berline',
+                'suv'        => 'SUV',
+                'van'        => 'Utilitaire',
+                'motorcycle' => 'Moto',
+                'truck'      => 'Utilitaire',
+                // Valeurs françaises (saisies depuis le frontend)
+                'berline'    => 'Berline',
+                '4x4'        => '4x4',
                 'utilitaire' => 'Utilitaire',
-                'moto' => 'Moto',
-                'citadine' => 'Citadine', // ✅ Accepté directement
-                'luxe' => 'Luxe', // ✅ Accepté directement
-                'car' => 'Berline',
-                'sedan' => 'Berline',
+                'moto'       => 'Moto',
+                'citadine'   => 'Berline',
+                'luxe'       => 'Berline',
+                'sedan'      => 'Berline',
             ];
             
             return $typeMap[$type] ?? ucfirst($type);
