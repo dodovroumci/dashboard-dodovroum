@@ -361,7 +361,7 @@
 </template>
 
 <script setup lang="ts">
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import OwnerLayout from '../../../Components/Layouts/OwnerLayout.vue';
 import AvailabilityCalendar from '../../../Components/AvailabilityCalendar.vue';
