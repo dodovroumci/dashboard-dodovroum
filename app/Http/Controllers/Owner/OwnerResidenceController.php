@@ -724,7 +724,7 @@ class OwnerResidenceController extends Controller
 
     /**
      * Supprimer une résidence
-     * La vérification de propriété et le blocage sur réservations actives sont gérés par NestJS (ResidenceOwnerGuard + 409).
+     * La vérification de propriété et le blocage sur réservations actives sont gérés par NestJS (ResidenceOwnerGuard + 400/403).
      */
     public function destroy(string $id)
     {
@@ -736,13 +736,11 @@ class OwnerResidenceController extends Controller
                     ->with('success', 'Résidence supprimée avec succès.');
             }
 
-            return redirect()->route('owner.residences.index')
-                ->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits.');
+            return back()->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits nécessaires.');
         } catch (\Exception $e) {
             Log::error('Erreur suppression résidence', ['id' => $id, 'error' => $e->getMessage()]);
 
-            return redirect()->route('owner.residences.index')
-                ->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits.');
+            return back()->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits nécessaires.');
         }
     }
 

@@ -461,6 +461,9 @@ const deleteResidence = () => {
   showActionsMenu.value = false;
   router.delete(`/owner/residences/${props.residence.id}`, {
     preserveScroll: true,
+    onError: (errors) => {
+      console.error('Erreur suppression résidence:', errors);
+    },
   });
 };
 

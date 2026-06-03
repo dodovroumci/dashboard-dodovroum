@@ -436,6 +436,9 @@ const deleteResidence = (residence: typeof props.residences[0]) => {
   closeMenu(residence.id);
   router.delete(`/owner/residences/${residence.id}`, {
     preserveScroll: true,
+    onError: (errors) => {
+      console.error('Erreur suppression résidence:', errors);
+    },
   });
 };
 
