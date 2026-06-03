@@ -724,58 +724,25 @@ class OwnerResidenceController extends Controller
 
     /**
      * Supprimer une résidence
-     * Vérification de propriété : la résidence doit apparaître dans la liste renvoyée par l'API avec le token propriétaire (même logique que l'index).
+     * La vérification de propriété et le blocage sur réservations actives sont gérés par NestJS (ResidenceOwnerGuard + 409).
      */
     public function destroy(string $id)
     {
-        $user = Auth::user();
-        if (!$user) {
-            abort(403, 'Non authentifié');
-        }
-
-        // Liste des résidences du propriétaire (API avec token propriétaire = uniquement les siennes)
-        $ownerResidences = $this->residenceService->getResidencesForUser($user);
-        $belongsToOwner = collect($ownerResidences)->contains(function ($r) use ($id) {
-            $rid = $r['id'] ?? $r['_id'] ?? null;
-            return $rid && (string) $rid === (string) $id;
-        });
-
-        if (!$belongsToOwner) {
-            Log::warning('Accès non autorisé à la résidence pour suppression', [
-                'residence_id' => $id,
-                'user_id' => $user->getAuthIdentifier(),
-            ]);
-            abort(403, 'Vous n\'êtes pas autorisé à supprimer cette résidence');
-        }
-
-        // Suppression via token admin (propriété déjà vérifiée ci-dessus)
-        // L'API NestJS n'autorise souvent DELETE /residences/:id qu'avec le token admin.
         try {
-            $deleted = $this->apiService->deleteResidence($id);
-            
+            $deleted = $this->residenceService->delete($id);
+
             if ($deleted) {
                 return redirect()->route('owner.residences.index')
-                    ->with('success', 'Résidence supprimée avec succès');
+                    ->with('success', 'Résidence supprimée avec succès.');
             }
-            
+
             return redirect()->route('owner.residences.index')
-                ->with('error', 'Erreur lors de la suppression');
-        } catch (DodoVroumApiException $e) {
-            Log::error('Erreur API lors de la suppression de la résidence', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-            
-            return redirect()->route('owner.residences.index')
-                ->with('error', $e->getMessage() ?: 'Erreur lors de la suppression de la résidence');
+                ->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits.');
         } catch (\Exception $e) {
-            Log::error('Erreur suppression résidence', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-            ]);
-            
+            Log::error('Erreur suppression résidence', ['id' => $id, 'error' => $e->getMessage()]);
+
             return redirect()->route('owner.residences.index')
-                ->with('error', 'Erreur lors de la suppression de la résidence');
+                ->with('error', 'Impossible de supprimer cette résidence : elle possède des réservations actives ou vous n\'avez pas les droits.');
         }
     }
 
