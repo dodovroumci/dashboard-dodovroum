@@ -363,6 +363,12 @@ class OwnerVehicleController extends Controller
                 }
             }
 
+            // Ne garder que les inactifs (l'API peut ne pas filtrer isActive correctement)
+            $isActive = $vehicle['isActive'] ?? true;
+            if ($isActive !== false) {
+                continue;
+            }
+
             $ownerVehicles[] = $vehicle;
         }
 
