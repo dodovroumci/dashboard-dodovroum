@@ -87,45 +87,13 @@
           </button>
         </div>
       </div>
-      <!-- Toggle offres expirées -->
-      <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
-        <button
-          type="button"
-          @click="hideExpired = !hideExpired"
-          class="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
-        >
-          <span
-            class="inline-flex w-8 h-4 rounded-full transition-colors"
-            :class="hideExpired ? 'bg-slate-300' : 'bg-blue-500'"
-          >
-            <span
-              class="inline-block w-4 h-4 bg-white rounded-full shadow transition-transform"
-              :class="hideExpired ? 'translate-x-0' : 'translate-x-4'"
-            ></span>
-          </span>
-          <span>Afficher les offres expirées</span>
-          <span v-if="expiredCount > 0" class="px-1.5 py-0.5 text-xs bg-red-100 text-red-600 rounded-full font-medium">
-            {{ expiredCount }}
-          </span>
-        </button>
-      </div>
     </form>
 
     <!-- Tableau des offres -->
     <div class="bg-white border border-slate-200 rounded-xl" style="overflow-x: auto;">
       <div v-if="visibleOffers.length === 0" class="p-12 text-center">
-        <p class="text-slate-500">
-          {{ comboOffers.length > 0 ? 'Toutes vos offres sont expirées.' : 'Aucune offre combinée trouvée' }}
-        </p>
-        <button
-          v-if="comboOffers.length > 0 && hideExpired"
-          type="button"
-          @click="hideExpired = false"
-          class="mt-3 text-sm text-blue-600 hover:text-blue-700 underline"
-        >
-          Afficher les offres expirées ({{ expiredCount }})
-        </button>
-        <p v-else class="text-sm text-slate-400 mt-2">Vous n'avez pas encore d'offres combinées.</p>
+        <p class="text-slate-500">Aucune offre combinée trouvée.</p>
+        <p class="text-sm text-slate-400 mt-2">Vous n'avez pas encore d'offres combinées.</p>
       </div>
 
       <table v-else class="w-full">
@@ -453,20 +421,11 @@ const formatPrice = (price: number): string => {
 // ── Statut depuis le backend (pas de calcul de date côté frontend) ───────────
 
 const isExpiredStatus = (status?: string | null): boolean =>
-  (status ?? '').toLowerCase() === 'expiree';
+  ['expiree', 'expired', 'inactive'].includes((status ?? '').toLowerCase());
 
-const hideExpired = ref(true);
-
-const expiredCount = computed(() =>
-  Array.isArray(props.comboOffers) ? props.comboOffers.filter(o => isExpiredStatus(o.status)).length : 0
+const visibleOffers = computed(() =>
+  Array.isArray(props.comboOffers) ? props.comboOffers : []
 );
-
-const visibleOffers = computed(() => {
-  if (!Array.isArray(props.comboOffers)) return [];
-  return hideExpired.value
-    ? props.comboOffers.filter(o => !isExpiredStatus(o.status))
-    : props.comboOffers;
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
