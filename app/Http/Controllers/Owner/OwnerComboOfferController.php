@@ -1540,12 +1540,12 @@ class OwnerComboOfferController extends Controller
      */
     protected function normalizeStatut(array $offer): string
     {
-        $statut = strtoupper(trim($offer['statut'] ?? ''));
+        $statut = strtoupper(trim($offer['statut'] ?? $offer['status'] ?? ''));
         return match ($statut) {
-            'ACTIVE'   => 'active',
-            'EXPIREE'  => 'expiree',
-            'INACTIVE' => 'inactive',
-            default    => ($offer['isActive'] ?? $offer['is_active'] ?? true) ? 'active' : 'inactive',
+            'ACTIVE'            => 'active',
+            'INACTIVE'          => 'inactive',
+            'EXPIREE', 'EXPIRED' => 'inactive',
+            default             => ($offer['isActive'] ?? $offer['is_active'] ?? true) ? 'active' : 'inactive',
         };
     }
 }

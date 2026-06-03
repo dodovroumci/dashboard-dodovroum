@@ -69,7 +69,6 @@
         <select v-model="filters.status" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500">
           <option value="">Tous les statuts</option>
           <option value="active">Active</option>
-          <option value="expiree">Expirée</option>
           <option value="inactive">Désactivée</option>
         </select>
         <div class="flex gap-2">
