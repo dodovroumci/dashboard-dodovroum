@@ -603,6 +603,8 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  console.log('Props reçues par le composant (comboOffers) :', props.comboOffers);
+  console.log('Nombre d\'offres :', Array.isArray(props.comboOffers) ? props.comboOffers.length : 'non-tableau');
 });
 
 onUnmounted(() => {
