@@ -369,8 +369,14 @@ const form = useForm({
 const typeOptions = [
   { value: 'villa', label: 'Villa' },
   { value: 'appartement', label: 'Appartement' },
-  { value: 'maison', label: 'Maison' },
   { value: 'studio', label: 'Studio' },
+  { value: 'duplex', label: 'Duplex' },
+  { value: 'maison_basse', label: 'Maison basse' },
+  { value: 'chambre_meublee', label: 'Chambre meublée' },
+  { value: 'residence_hoteliere', label: 'Résidence hôtelière' },
+  { value: 'villa_avec_piscine', label: 'Villa avec piscine' },
+  { value: 'penthouse', label: 'Penthouse' },
+  { value: 'bungalow', label: 'Bungalow' },
 ];
 
 const proprietaireOptions = computed(() => {

@@ -49,8 +49,14 @@
               <option value="">Sélectionner un type</option>
               <option value="villa">Villa</option>
               <option value="appartement">Appartement</option>
-              <option value="maison">Maison</option>
               <option value="studio">Studio</option>
+              <option value="duplex">Duplex</option>
+              <option value="maison_basse">Maison basse</option>
+              <option value="chambre_meublee">Chambre meublée</option>
+              <option value="residence_hoteliere">Résidence hôtelière</option>
+              <option value="villa_avec_piscine">Villa avec piscine</option>
+              <option value="penthouse">Penthouse</option>
+              <option value="bungalow">Bungalow</option>
             </select>
             <p v-if="errors.typeResidence" class="text-red-600 text-sm mt-1">{{ errors.typeResidence }}</p>
           </div>
