@@ -431,6 +431,11 @@ const form = useForm({
 });
 
 const errors = computed(() => form.errors);
+
+onMounted(() => {
+  console.log('Données chargées dans le formulaire :', form.data());
+});
+
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const imageErrors = ref<Record<number, boolean>>({});
@@ -506,13 +511,11 @@ const removeImage = (index: number) => {
 
 const submit = () => {
   if (!props.vehicle?.id) return;
+  console.log('Envoi du formulaire :', form.data());
   form.put(`/owner/vehicles/${props.vehicle.id}`, {
     preserveScroll: true,
-    onSuccess: () => {
-      // Le message de succès sera affiché via flash
-    },
-    onError: () => {
-      // Les erreurs seront affichées via form.errors
+    onError: (errors) => {
+      console.error('Erreurs formulaire :', errors);
     },
   });
 };
