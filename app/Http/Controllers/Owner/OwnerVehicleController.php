@@ -781,69 +781,15 @@ class OwnerVehicleController extends Controller
      */
     public function destroy(string $id): RedirectResponse
     {
-        $user = Auth::user();
-
-        if (!$user) {
-            abort(403, 'Non authentifié');
-        }
-
         try {
-            $vehicle = $this->vehicleService->find($id);
-
-            if (!$vehicle) {
-                return redirect()->route('owner.vehicles.index')
-                    ->with('error', 'Véhicule non trouvé ou accès non autorisé');
-            }
-
-            $proprietaireId = $this->getProprietaireId($user);
-            if (!$proprietaireId) {
-                Log::error('Impossible de récupérer le proprietaireId pour la suppression du véhicule', [
-                    'user_id' => $user->getAuthIdentifier(),
-                ]);
-                return redirect()->route('owner.vehicles.index')
-                    ->with('error', 'Erreur d\'authentification.');
-            }
-
-            $vehicleOwnerId = $vehicle['proprietaireId'] ?? $vehicle['ownerId'] ?? null;
-            if (isset($vehicle['proprietaire']) && is_array($vehicle['proprietaire'])) {
-                $vehicleOwnerId = $vehicleOwnerId ?? $vehicle['proprietaire']['id'] ?? $vehicle['proprietaire']['_id'] ?? null;
-            }
-            $matches = $vehicleOwnerId && (
-                (string) $vehicleOwnerId === (string) $proprietaireId
-                || (is_numeric($vehicleOwnerId) && is_numeric($proprietaireId) && (int) $vehicleOwnerId === (int) $proprietaireId)
-            );
-            if (!$matches) {
-                Log::warning('Tentative de suppression d\'un véhicule qui n\'appartient pas au propriétaire', [
-                    'vehicle_id' => $id,
-                    'user_id' => $user->getAuthIdentifier(),
-                ]);
-                return redirect()->route('owner.vehicles.index')
-                    ->with('error', 'Vous n\'êtes pas autorisé à supprimer ce véhicule.');
-            }
-
             $deleted = $this->vehicleService->delete($id);
 
             if ($deleted) {
                 return redirect()->route('owner.vehicles.index')
-                    ->with('success', 'Véhicule supprimé avec succès');
+                    ->with('success', 'Véhicule supprimé avec succès.');
             }
 
-            return redirect()->route('owner.vehicles.index')
-                ->with('error', 'Erreur lors de la suppression');
-        } catch (DodoVroumApiException $e) {
-            Log::error('Erreur API lors de la suppression du véhicule', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'context' => $e->getContext(),
-            ]);
-
-            $message = $e->getMessage();
-            if (str_contains(strtolower($message), 'internal server error') || ($e->getContext()['status'] ?? null) === 500) {
-                $message = 'La suppression a échoué côté serveur. Le véhicule est peut-être lié à des réservations ou offres combinées.';
-            }
-
-            return redirect()->route('owner.vehicles.index')
-                ->with('error', $message ?: 'Erreur lors de la suppression du véhicule');
+            return back()->with('error', 'Impossible de supprimer ce véhicule : il possède des réservations actives ou vous n\'avez pas les droits nécessaires.');
         } catch (\Exception $e) {
             Log::error('Erreur suppression véhicule', [
                 'id' => $id,
@@ -851,11 +797,10 @@ class OwnerVehicleController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('owner.vehicles.index')
-                ->with('error', 'Erreur lors de la suppression du véhicule.');
+            return back()->with('error', 'Impossible de supprimer ce véhicule : il possède des réservations actives ou vous n\'avez pas les droits nécessaires.');
         }
     }
-    
+
     /**
      * Calculer les statistiques d'un véhicule
      */
