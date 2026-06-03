@@ -151,14 +151,14 @@ class OwnerVehicleController extends Controller
             }
             $vehicles = $activeVehicles;
 
-            // Compter les archivés via un appel dédié isActive=false (même logique que archived())
+            // Compter les archivés : même logique que archived() — filtrer isActive=false côté PHP
             $archivedCount = 0;
             try {
                 $archivedList = $this->apiService->getVehicles([
                     'proprietaireId' => $apiFilters['proprietaireId'] ?? $proprietaireId,
                     'isActive'       => 'false',
                 ]);
-                $archivedCount = count($archivedList);
+                $archivedCount = count(array_filter($archivedList, fn($v) => ($v['isActive'] ?? true) === false));
             } catch (\Exception $e) {
                 Log::warning('Impossible de compter les véhicules archivés', ['error' => $e->getMessage()]);
             }
