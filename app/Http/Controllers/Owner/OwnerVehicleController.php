@@ -725,18 +725,14 @@ class OwnerVehicleController extends Controller
                 $errorMessage = 'Impossible de modifier ce véhicule. Vous n\'êtes pas autorisé à effectuer cette action. Si ce véhicule apparaît dans votre liste, veuillez contacter le support technique.';
             }
             
-            return back()->withErrors([
-                'error' => $errorMessage ?: 'Erreur lors de la mise à jour du véhicule'
-            ])->withInput();
+            return back()->with('error', $errorMessage ?: 'Erreur lors de la mise à jour du véhicule')->withInput();
         } catch (\Exception $e) {
             Log::error('Erreur mise à jour véhicule', [
                 'id' => $id,
                 'error' => $e->getMessage(),
             ]);
-            
-            return back()->withErrors([
-                'error' => 'Erreur lors de la mise à jour du véhicule'
-            ])->withInput();
+
+            return back()->with('error', 'Erreur lors de la mise à jour du véhicule')->withInput();
         }
     }
 

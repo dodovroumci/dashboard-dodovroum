@@ -24,8 +24,11 @@
     <div v-if="$page.props.flash?.success" class="bg-emerald-100 border border-emerald-400 text-emerald-700 px-4 py-3 rounded">
       {{ $page.props.flash.success }}
     </div>
-    <div v-if="$page.props.flash?.error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-      {{ $page.props.flash.error }}
+    <div v-if="$page.props.flash?.error" class="flex items-center p-4 mb-4 text-sm text-amber-800 border border-amber-300 rounded-lg bg-amber-50 shadow-sm" role="alert">
+      <svg class="flex-shrink-0 inline w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"/>
+      </svg>
+      <div>{{ $page.props.flash.error }}</div>
     </div>
 
     <form @submit.prevent="submit" class="bg-white border border-slate-200 rounded-xl p-6 space-y-6">
