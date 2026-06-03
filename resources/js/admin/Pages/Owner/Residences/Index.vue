@@ -279,7 +279,7 @@
       <div
         v-if="residenceToDelete"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]"
-        @click.self="residenceToDelete = null"
+        @click.self="tryCloseModal"
       >
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl" @click.stop>
           <h3 class="text-lg font-semibold mb-4">Confirmer la suppression</h3>
@@ -385,6 +385,7 @@ const resetFilters = () => {
 
 const openMenus = ref(new Set<string | number>());
 const residenceToDelete = ref<typeof props.residences[0] | null>(null);
+const modalCanClose = ref(false);
 const buttonRefs = ref<Map<string | number, HTMLElement>>(new Map());
 
 const goToResidence = (residence: (typeof props.residences)[0]) => {
@@ -466,9 +467,20 @@ onUnmounted(() => {
 });
 
 const confirmDelete = (residence: typeof props.residences[0]) => {
+  modalCanClose.value = false;
   residenceToDelete.value = residence;
-  // Fermer le menu après un délai pour éviter que le même clic ne ferme le modal (overlay)
-  setTimeout(() => closeMenu(residence.id), 300);
+  // Bloquer la fermeture immédiate pour éviter que le clic d'ouverture
+  // ne se propage à l'overlay et ne referme le modal aussitôt.
+  setTimeout(() => {
+    modalCanClose.value = true;
+    closeMenu(residence.id);
+  }, 200);
+};
+
+const tryCloseModal = () => {
+  if (modalCanClose.value) {
+    residenceToDelete.value = null;
+  }
 };
 
 const deleteResidence = () => {
