@@ -165,7 +165,7 @@
                 </div>
                 <div>
                   <div class="text-sm font-medium text-slate-900">
-                    {{ vehicle.name || `${vehicle.brand} ${vehicle.model}` || 'Véhicule sans nom' }}
+                    {{ vehicle.name || `${vehicle.brand || ''} ${vehicle.model || ''}`.trim() || 'Véhicule sans nom' }}
                   </div>
                   <div class="text-sm text-slate-500">
                     {{ vehicle.year || 'N/A' }} • {{ vehicle.seats || 0 }} places
