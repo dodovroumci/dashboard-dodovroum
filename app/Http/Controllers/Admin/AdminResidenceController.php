@@ -146,9 +146,13 @@ class AdminResidenceController extends Controller
             $currentMonth = date('Y-m');
             $today = new \DateTimeImmutable('today');
             
+            $archivedCount = 0;
             foreach ($allResidencesRaw as $residence) {
-                if (($residence['available'] ?? $residence['isActive'] ?? true) === true) {
+                $isActive = $residence['available'] ?? $residence['isActive'] ?? true;
+                if ($isActive === true) {
                     $availableResidences++;
+                } elseif ($isActive === false) {
+                    $archivedCount++;
                 }
             }
             
@@ -247,6 +251,7 @@ class AdminResidenceController extends Controller
                 'to' => $paginator->lastItem(),
             ],
             'filters' => $filters ?? [],
+            'archivedCount' => $archivedCount ?? 0,
             'stats' => [
                 'totalResidences' => $totalResidences ?? 0,
                 'availableResidences' => $availableResidences ?? 0,
