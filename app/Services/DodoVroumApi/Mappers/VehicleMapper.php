@@ -7,8 +7,15 @@ class VehicleMapper
     /**
      * Mapper les données d'un véhicule depuis l'API vers le format frontend
      */
-    public static function fromApi(array $vehicle): array
+    public static function fromApi(mixed $vehicle): array
     {
+        // Garantir un tableau associatif même si un objet Response ou stdClass est passé par erreur
+        if (!is_array($vehicle)) {
+            $vehicle = is_object($vehicle) && method_exists($vehicle, 'json')
+                ? ($vehicle->json() ?? [])
+                : (array) $vehicle;
+        }
+
         // Inférer le type de véhicule
         $type = self::inferVehicleType($vehicle);
         

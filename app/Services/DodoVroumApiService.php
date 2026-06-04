@@ -317,36 +317,38 @@ class DodoVroumApiService
             if ($response->successful()) {
                 $data = $response->json();
 
-                // Gérer les réponses avec structure { success: true, data: [...] }
+                // Gérer les réponses avec structure { success: true, data: ... }
                 if (isset($data['data']) && is_array($data['data'])) {
                     $items = $data['data'];
-                    
-                    // Aplatir les tableaux imbriqués
+
+                    // Objet unique : { data: { id: '...', brand: '...', ... } }
+                    // Le foreach itérerait sur les valeurs scalaires → retourner directement
+                    if (isset($items['id']) || isset($items['_id'])) {
+                        return $items;
+                    }
+
+                    // Liste : { data: [ {...}, {...} ] } — aplatir les tableaux imbriqués
                     $flattened = [];
                     foreach ($items as $item) {
                         if (is_array($item)) {
-                            // Vérifier si c'est un tableau numérique (indexé 0, 1, 2...)
                             $keys = array_keys($item);
                             $isNumericArray = !empty($keys) && $keys === range(0, count($item) - 1);
-                            
+
                             if ($isNumericArray) {
-                                // C'est un tableau de tableaux, on aplatit
                                 foreach ($item as $subItem) {
-                                    if (is_array($subItem) && isset($subItem['id'])) {
+                                    if (is_array($subItem) && (isset($subItem['id']) || isset($subItem['_id']))) {
                                         $flattened[] = $subItem;
                                     }
                                 }
                             } else {
-                                // C'est un objet/tableau associatif, on l'ajoute directement
-                                if (isset($item['id'])) {
+                                if (isset($item['id']) || isset($item['_id'])) {
                                     $flattened[] = $item;
                                 }
                             }
                         }
                     }
-                    
-                    $items = $flattened;
-                    return $items;
+
+                    return $flattened;
                 }
                 
                 // Si c'est directement un tableau
