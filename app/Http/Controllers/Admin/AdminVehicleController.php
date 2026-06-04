@@ -414,6 +414,22 @@ class AdminVehicleController extends Controller
                 ->with('error', 'Erreur lors de la récupération du véhicule');
         }
 
+        Log::info('[AdminVehicleController::show] Données envoyées à Vehicles/Show', [
+            'vehicle_id'    => $vehicle['id'] ?? $vehicle['_id'] ?? null,
+            'vehicle_keys'  => array_keys($vehicle),
+            'brand'         => $vehicle['brand']        ?? 'ABSENT',
+            'marque'        => $vehicle['marque']       ?? 'ABSENT',
+            'model'         => $vehicle['model']        ?? 'ABSENT',
+            'modele'        => $vehicle['modele']       ?? 'ABSENT',
+            'year'          => $vehicle['year']         ?? 'ABSENT',
+            'plateNumber'   => $vehicle['plateNumber']  ?? 'ABSENT',
+            'pricePerDay'   => $vehicle['pricePerDay']  ?? 'ABSENT',
+            'fuel'          => $vehicle['fuel']         ?? 'ABSENT',
+            'fuelType'      => $vehicle['fuelType']     ?? 'ABSENT',
+            'type'          => $vehicle['type']         ?? 'ABSENT',
+            'name'          => $vehicle['name']         ?? 'ABSENT',
+        ]);
+
         return Inertia::render('Vehicles/Show', [
             'vehicle' => $vehicle,
             'stats' => $stats,

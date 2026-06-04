@@ -815,11 +815,24 @@ const handleImageError = (index: number) => {
 
 // Log pour déboguer les images au montage
 onMounted(() => {
-  console.log('🔍 Show.vue - Images du véhicule', {
-    hasImages: !!props.vehicle?.images,
-    imagesCount: props.vehicle?.images?.length || 0,
-    images: props.vehicle?.images,
-    vehicleId: props.vehicle?.id,
+  console.log('🔍 [Show.vue] Props reçues par le composant :', props);
+  console.log('🔍 [Show.vue] Champs clés du véhicule :', {
+    id:          props.vehicle?.id,
+    name:        props.vehicle?.name,
+    brand:       props.vehicle?.brand,
+    marque:      props.vehicle?.marque,
+    model:       props.vehicle?.model,
+    modele:      props.vehicle?.modele,
+    year:        props.vehicle?.year,
+    annee:       props.vehicle?.annee,
+    type:        props.vehicle?.type,
+    plateNumber: props.vehicle?.plateNumber,
+    plate_number:props.vehicle?.plate_number,
+    pricePerDay: props.vehicle?.pricePerDay,
+    fuel:        props.vehicle?.fuel,
+    carburant:   props.vehicle?.carburant,
+    fuelType:    props.vehicle?.fuelType,
+    images:      props.vehicle?.images,
   });
 });
 
