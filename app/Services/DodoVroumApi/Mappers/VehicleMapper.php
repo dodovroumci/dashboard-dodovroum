@@ -21,34 +21,39 @@ class VehicleMapper
         return [
             'id' => $vehicle['id'] ?? $vehicle['_id'] ?? null,
             'name' => $name,
-            'brand' => $vehicle['marque'] ?? $vehicle['brand'] ?? null,
-            'marque' => $vehicle['marque'] ?? $vehicle['brand'] ?? null,
-            'model' => $vehicle['modele'] ?? $vehicle['model'] ?? null,
-            'modele' => $vehicle['modele'] ?? $vehicle['model'] ?? null,
-            'year' => $vehicle['annee'] ?? $vehicle['year'] ?? null,
-            'annee' => $vehicle['annee'] ?? $vehicle['year'] ?? null,
+            'brand' => $vehicle['brand'] ?? $vehicle['marque'] ?? null,
+            'marque' => $vehicle['brand'] ?? $vehicle['marque'] ?? null,
+            'model' => $vehicle['model'] ?? $vehicle['modele'] ?? null,
+            'modele' => $vehicle['model'] ?? $vehicle['modele'] ?? null,
+            'year' => $vehicle['year'] ?? $vehicle['annee'] ?? null,
+            'annee' => $vehicle['year'] ?? $vehicle['annee'] ?? null,
             'type' => $type,
             'typeVehicule' => $type,
             'seats' => $vehicle['places'] ?? $vehicle['seats'] ?? $vehicle['capacity'] ?? 0,
             'places' => $vehicle['places'] ?? $vehicle['seats'] ?? $vehicle['capacity'] ?? 0,
-            'plateNumber' => $vehicle['plateNumber'] ?? $vehicle['plate_number'] ?? $vehicle['plaque'] ?? $vehicle['plaqueImmatriculation'] ?? 'N/A',
-            'plate_number' => $vehicle['plateNumber'] ?? $vehicle['plate_number'] ?? $vehicle['plaque'] ?? $vehicle['plaqueImmatriculation'] ?? 'N/A',
-            'pricePerDay' => $vehicle['prixParJour'] ?? $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['price'] ?? 0,
-            'price_per_day' => $vehicle['prixParJour'] ?? $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['price'] ?? 0,
-            'price' => $vehicle['prixParJour'] ?? $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['price'] ?? 0,
+            'plateNumber' => $vehicle['licensePlate'] ?? $vehicle['plateNumber'] ?? $vehicle['plate_number'] ?? $vehicle['plaque'] ?? $vehicle['plaqueImmatriculation'] ?? 'N/A',
+            'plate_number' => $vehicle['licensePlate'] ?? $vehicle['plateNumber'] ?? $vehicle['plate_number'] ?? $vehicle['plaque'] ?? $vehicle['plaqueImmatriculation'] ?? 'N/A',
+            'pricePerDay' => $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['prixParJour'] ?? $vehicle['price'] ?? 0,
+            'price_per_day' => $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['prixParJour'] ?? $vehicle['price'] ?? 0,
+            'price' => $vehicle['pricePerDay'] ?? $vehicle['price_per_day'] ?? $vehicle['prixParJour'] ?? $vehicle['price'] ?? 0,
             'color' => $vehicle['couleur'] ?? $vehicle['color'] ?? null,
             'couleur' => $vehicle['couleur'] ?? $vehicle['color'] ?? null,
             'transmission' => $vehicle['transmission'] ?? null,
-            // L'API NestJS expose surtout fuelType ; carburant/fuel sont des alias historiques
-            'fuel' => $vehicle['carburant']
-                ?? $vehicle['fuel']
-                ?? $vehicle['fuelType']
+            // NestJS envoie fuelType (camelCase) en priorité
+            'fuel' => $vehicle['fuelType']
                 ?? $vehicle['fuel_type']
+                ?? $vehicle['fuel']
+                ?? $vehicle['carburant']
                 ?? null,
-            'carburant' => $vehicle['carburant']
-                ?? $vehicle['fuel']
-                ?? $vehicle['fuelType']
+            'carburant' => $vehicle['fuelType']
                 ?? $vehicle['fuel_type']
+                ?? $vehicle['fuel']
+                ?? $vehicle['carburant']
+                ?? null,
+            'fuelType' => $vehicle['fuelType']
+                ?? $vehicle['fuel_type']
+                ?? $vehicle['fuel']
+                ?? $vehicle['carburant']
                 ?? null,
             'mileage' => $vehicle['kilometrage'] ?? $vehicle['mileage'] ?? null,
             'kilometrage' => $vehicle['kilometrage'] ?? $vehicle['mileage'] ?? null,
