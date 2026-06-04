@@ -64,6 +64,7 @@
             <div
               v-if="showActionsMenu"
               class="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-200 z-50 py-1"
+              @click.stop
             >
               <a
                 :href="`/vehicles/${vehicle?.id}`"
@@ -74,10 +75,11 @@
                 Voir côté client
               </a>
               <button
-                @click="toggleDisable"
+                type="button"
+                @click.stop="toggleDisable"
                 class="w-full text-left px-4 py-2.5 min-h-[44px] text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 touch-manipulation"
               >
-                  <Power class="w-4 h-4 shrink-0" />
+                <Power class="w-4 h-4 shrink-0" />
                 {{ vehicle?.isAvailable || vehicle?.available ? 'Désactiver' : 'Activer' }}
               </button>
             </div>
@@ -604,6 +606,7 @@ const toggleDisable = () => {
   router.patch(
     route('admin.vehicles.toggle-active', props.vehicle.id),
     { new_active: !currentlyActive },
+    { preserveScroll: true },
   );
 };
 
