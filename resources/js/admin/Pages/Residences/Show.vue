@@ -488,7 +488,6 @@ const imageErrors = ref<Record<number, boolean>>({});
 
 const isActive = computed(() => {
   const val = props.residence?.isActive;
-  console.log('isActive raw:', val, typeof val);
   if (typeof val === 'string') return val === 'true';
   return !!val;
 });
@@ -498,9 +497,12 @@ const toggleActionsMenu = () => {
 };
 
 const toggleDisable = () => {
-  // TODO: Implémenter la désactivation
-  alert('Fonctionnalité à implémenter');
+  if (!props.residence?.id) return;
   showActionsMenu.value = false;
+  router.patch(
+    route('admin.residences.toggle-active', props.residence.id),
+    { new_active: !isActive.value },
+  );
 };
 
 const confirmDelete = () => {

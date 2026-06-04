@@ -271,6 +271,20 @@ class AdminVehicleController extends Controller
         ]);
     }
 
+    public function toggleActive(Request $request, string $id): RedirectResponse
+    {
+        $newActive = filter_var($request->input('new_active', '0'), FILTER_VALIDATE_BOOLEAN);
+        try {
+            $this->apiService->updateVehicle($id, ['isActive' => $newActive]);
+            $message = $newActive ? 'Véhicule activé avec succès.' : 'Véhicule désactivé avec succès.';
+            return redirect()->route('admin.vehicles.show', $id)->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Erreur toggle active véhicule admin', ['id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->route('admin.vehicles.show', $id)
+                ->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage());
+        }
+    }
+
     public function reactivate(string $id): RedirectResponse
     {
         try {

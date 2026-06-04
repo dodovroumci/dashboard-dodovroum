@@ -323,6 +323,20 @@ class AdminResidenceController extends Controller
         ]);
     }
 
+    public function toggleActive(Request $request, string $id): RedirectResponse
+    {
+        $newActive = filter_var($request->input('new_active', '0'), FILTER_VALIDATE_BOOLEAN);
+        try {
+            $this->apiService->updateResidence($id, ['isActive' => $newActive]);
+            $message = $newActive ? 'Résidence activée avec succès.' : 'Résidence désactivée avec succès.';
+            return redirect()->route('admin.residences.show', $id)->with('success', $message);
+        } catch (\Exception $e) {
+            Log::error('Erreur toggle active résidence admin', ['id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->route('admin.residences.show', $id)
+                ->with('error', 'Erreur lors de la mise à jour : ' . $e->getMessage());
+        }
+    }
+
     public function reactivate(string $id): RedirectResponse
     {
         try {

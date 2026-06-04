@@ -60,10 +60,12 @@ Route::middleware(['auth', 'admin'])
         Route::get('/revenue', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'index'])->name('revenue');
         Route::get('/revenue/export.csv', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'exportCsv'])->name('revenue.export');
         Route::get('/residences/archives', [AdminResidenceController::class, 'archived'])->name('residences.archives');
+        Route::patch('/residences/{id}/toggle-active', [AdminResidenceController::class, 'toggleActive'])->name('residences.toggle-active');
         Route::patch('/residences/{id}/reactivate', [AdminResidenceController::class, 'reactivate'])->name('residences.reactivate');
         Route::resource('residences', AdminResidenceController::class);
         Route::get('/residences/{id}/check-bookings', [AdminResidenceController::class, 'checkBookings'])->name('residences.check-bookings');
         Route::get('/vehicles/archives', [AdminVehicleController::class, 'archived'])->name('vehicles.archives');
+        Route::patch('/vehicles/{id}/toggle-active', [AdminVehicleController::class, 'toggleActive'])->name('vehicles.toggle-active');
         Route::patch('/vehicles/{id}/reactivate', [AdminVehicleController::class, 'reactivate'])->name('vehicles.reactivate');
         Route::resource('vehicles', AdminVehicleController::class);
         Route::get('/vehicles/{id}/check-bookings', [AdminVehicleController::class, 'checkBookings'])->name('vehicles.check-bookings');

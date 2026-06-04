@@ -598,9 +598,13 @@ const toggleActionsMenu = () => {
 };
 
 const toggleDisable = () => {
-  // TODO: Implémenter la désactivation
-  alert('Fonctionnalité à implémenter');
+  if (!props.vehicle?.id) return;
   showActionsMenu.value = false;
+  const currentlyActive = props.vehicle?.isAvailable ?? props.vehicle?.available ?? true;
+  router.patch(
+    route('admin.vehicles.toggle-active', props.vehicle.id),
+    { new_active: !currentlyActive },
+  );
 };
 
 const confirmDelete = async () => {
