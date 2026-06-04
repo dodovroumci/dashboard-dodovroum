@@ -59,6 +59,8 @@ Route::middleware(['auth', 'admin'])
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
         Route::get('/revenue', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'index'])->name('revenue');
         Route::get('/revenue/export.csv', [\App\Http\Controllers\Admin\AdminRevenueController::class, 'exportCsv'])->name('revenue.export');
+        Route::get('/residences/archives', [AdminResidenceController::class, 'archived'])->name('residences.archives');
+        Route::patch('/residences/{id}/reactivate', [AdminResidenceController::class, 'reactivate'])->name('residences.reactivate');
         Route::resource('residences', AdminResidenceController::class);
         Route::get('/residences/{id}/check-bookings', [AdminResidenceController::class, 'checkBookings'])->name('residences.check-bookings');
         Route::resource('vehicles', AdminVehicleController::class);

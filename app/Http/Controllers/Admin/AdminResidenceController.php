@@ -256,6 +256,81 @@ class AdminResidenceController extends Controller
         ]);
     }
 
+    public function archived(Request $request): Response
+    {
+        try {
+            $allResidences = $this->apiService->getResidences(['isActive' => 'false']);
+        } catch (\Exception $e) {
+            Log::error('Erreur API résidences archivées admin', ['error' => $e->getMessage()]);
+            return Inertia::render('Residences/Archived', [
+                'residences' => [],
+                'error' => 'Erreur lors de la récupération des résidences archivées.',
+            ]);
+        }
+
+        $archived = array_filter($allResidences, function ($residence) {
+            $isActive = $residence['isActive'] ?? $residence['isVerified'] ?? true;
+            return !$isActive;
+        });
+
+        $mapped = array_map(function ($r) {
+            $mapped = \App\Services\DodoVroumApi\Mappers\ResidenceMapper::fromApi($r);
+
+            $proprietaireId = $r['proprietaireId'] ?? $r['proprietaire']['id'] ?? $r['ownerId'] ?? null;
+            $mapped['proprietaireId'] = $proprietaireId;
+
+            try {
+                if ($proprietaireId) {
+                    $owner = $this->userService->find((string) $proprietaireId);
+                    $firstName = $owner['firstName'] ?? $owner['prenom'] ?? '';
+                    $lastName  = $owner['lastName']  ?? $owner['nom']   ?? $owner['name'] ?? '';
+                    $fullName  = trim($firstName . ' ' . $lastName) ?: ($owner['email'] ?? null);
+                    $mapped['ownerName'] = $fullName;
+                }
+            } catch (\Exception $e) {
+                // Propriétaire inconnu — on continue
+            }
+
+            return $mapped;
+        }, array_values($archived));
+
+        $perPage     = $request->get('per_page', 15);
+        $currentPage = $request->get('page', 1);
+        $collection  = collect($mapped);
+        $paginated   = new LengthAwarePaginator(
+            $collection->forPage($currentPage, $perPage),
+            $collection->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return Inertia::render('Residences/Archived', [
+            'residences' => $paginated->items(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'per_page'     => $paginated->perPage(),
+                'total'        => $paginated->total(),
+                'from'         => $paginated->firstItem(),
+                'to'           => $paginated->lastItem(),
+            ],
+        ]);
+    }
+
+    public function reactivate(string $id): RedirectResponse
+    {
+        try {
+            $this->apiService->updateResidence($id, ['isActive' => true]);
+            return redirect()->route('admin.residences.index')
+                ->with('success', 'Résidence réactivée avec succès.');
+        } catch (\Exception $e) {
+            Log::error('Erreur réactivation résidence admin', ['id' => $id, 'error' => $e->getMessage()]);
+            return redirect()->route('admin.residences.archives')
+                ->with('error', 'Erreur lors de la réactivation : ' . $e->getMessage());
+        }
+    }
+
     /**
      * Afficher le formulaire de création
      */
