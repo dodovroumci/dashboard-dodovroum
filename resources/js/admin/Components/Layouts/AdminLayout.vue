@@ -25,7 +25,6 @@ import {
   Calendar,
   Settings,
   Wallet,
-  Archive,
 } from 'lucide-vue-next';
 
 const sidebarOpen = ref(false);
@@ -36,7 +35,6 @@ useAutoRefresh();
 const navItems = computed(() => [
   { label: 'Tableau de bord', href: '/admin/dashboard', icon: Home },
   { label: 'Résidences', href: '/admin/residences', icon: Building2 },
-  { label: 'Archives résidences', href: '/admin/residences/archives', icon: Archive },
   { label: 'Véhicules', href: '/admin/vehicles', icon: Truck },
   { label: 'Offres combinées', href: '/admin/combo-offers', icon: LinkIcon },
   { label: 'Utilisateurs', href: '/admin/users', icon: Users },

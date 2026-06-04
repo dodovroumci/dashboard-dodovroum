@@ -15,7 +15,7 @@ import { ref, computed } from 'vue';
 import Sidebar from '../Sidebar.vue';
 import Header from '../Header.vue';
 import { usePage } from '@inertiajs/vue3';
-import { Home, Building2, Truck, Calendar, Package, Wallet, Archive } from 'lucide-vue-next';
+import { Home, Building2, Truck, Calendar, Package, Wallet } from 'lucide-vue-next';
 import { useAutoRefresh } from '../../composables/useAutoRefresh';
 
 const sidebarOpen = ref(false);
@@ -27,7 +27,6 @@ const navItems = computed(() => [
   { label: 'Tableau de bord', href: '/owner/dashboard', icon: Home },
   { label: 'Finances', href: '/owner/revenue', icon: Wallet },
   { label: 'Mes résidences', href: '/owner/residences', icon: Building2 },
-  { label: 'Archives résidences', href: '/owner/residences/archived', icon: Archive },
   { label: 'Mes véhicules', href: '/owner/vehicles', icon: Truck },
   { label: 'Mes offres', href: '/owner/combo-offers', icon: Package },
   { label: 'Mes réservations', href: '/owner/bookings', icon: Calendar },
