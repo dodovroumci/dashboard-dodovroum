@@ -163,7 +163,7 @@
               Propriétaire *
             </label>
             <select
-              v-model="form.proprietaireId"
+              v-model="form.ownerId"
               required
               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
@@ -176,7 +176,7 @@
                 {{ owner.name }} {{ owner.email ? `(${owner.email})` : '' }}
               </option>
             </select>
-            <p v-if="errors.proprietaireId" class="text-red-600 text-sm mt-1">{{ errors.proprietaireId }}</p>
+            <p v-if="errors.ownerId" class="text-red-600 text-sm mt-1">{{ errors.ownerId }}</p>
           </div>
         </div>
       </div>
@@ -506,7 +506,7 @@ const form = useForm({
   description: '',
   images: [],
   features: [],
-  proprietaireId: '',
+  ownerId: '',
 });
 
 const submit = (event?: Event) => {
@@ -519,7 +519,7 @@ const submit = (event?: Event) => {
     formData: form.data(),
     errors: form.errors,
     owners: owners.length,
-    proprietaireId: form.proprietaireId,
+    ownerId: form.ownerId,
     processing: form.processing,
   });
   
@@ -540,7 +540,7 @@ const submit = (event?: Event) => {
   if (!form.brand || form.brand.trim() === '') missingFields.push('marque');
   if (!form.model || form.model.trim() === '') missingFields.push('modèle');
   if (!form.type || form.type.trim() === '') missingFields.push('type');
-  if (!form.proprietaireId || form.proprietaireId.trim() === '') missingFields.push('propriétaire');
+  if (!form.ownerId || form.ownerId.trim() === '') missingFields.push('propriétaire');
   if (form.pricePerDay === null || form.pricePerDay === undefined || !form.pricePerDay || form.pricePerDay <= 0) missingFields.push('prix par jour');
   if (!form.plateNumber || form.plateNumber.trim() === '') missingFields.push('numéro de plaque');
   if (!form.year || form.year < 1900) missingFields.push('année');
@@ -573,12 +573,11 @@ const submit = (event?: Event) => {
 
   form.transform((data) => ({
     ...data,
-    proprietaireId: form.proprietaireId,
-    ownerId: form.proprietaireId,
+    ownerId: form.ownerId,
   })).post(routeUrl, {
     onBefore: () => {
       // Validation finale avant l'envoi pour éviter les requêtes inutiles
-      if (!form.proprietaireId) {
+      if (!form.ownerId) {
         alert('Veuillez sélectionner un propriétaire');
         return false;
       }
