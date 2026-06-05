@@ -631,12 +631,6 @@ class AdminVehicleController extends Controller
             // Tronquer la description à 500 caractères si nécessaire
             $validated = $request->validated();
             
-            Log::info('[STORE] Données reçues du formulaire', [
-                'validated_keys'  => array_keys($validated),
-                'proprietaireId'  => $validated['proprietaireId'] ?? 'ABSENT',
-                'ownerId'         => $validated['ownerId']        ?? 'ABSENT',
-                'raw_ownerId'     => $request->input('ownerId')   ?? 'ABSENT',
-            ]);
             
             // 🛡️ BLINDAGE : Vérifier que proprietaireId/ownerId est valide avant d'appeler le service
             $proprietaireId = $validated['proprietaireId'] ?? $validated['ownerId'] ?? null;

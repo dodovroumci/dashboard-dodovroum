@@ -110,37 +110,23 @@ class VehicleService extends BaseApiService
      */
     public function create(array $data, bool $isAdmin = false): array
     {
-        Log::info('[VehicleService::create] $data reçu', [
-            'data_keys'      => array_keys($data),
-            'proprietaireId' => $data['proprietaireId'] ?? 'ABSENT',
-            'ownerId'        => $data['ownerId']        ?? 'ABSENT',
-        ]);
+        // Récupérer l'ID propriétaire AVANT le mapping
+        $ownerId = $data['proprietaireId'] ?? $data['ownerId'] ?? null;
 
-        // Accepter proprietaireId ou ownerId (le frontend peut envoyer l'un ou l'autre)
-        $proprietaireId = $data['proprietaireId'] ?? $data['ownerId'] ?? null;
-
+        // Mapper les champs vers le format NestJS
         $dataForApi = VehicleMapper::toApi($data);
 
-        // Toujours supprimer proprietaireId (NestJS ne connaît pas ce champ)
-        unset($dataForApi['proprietaireId']);
+        // Supprimer les clés d'ownership du mapper (NestJS les attend via ownerId uniquement)
+        unset($dataForApi['proprietaireId'], $dataForApi['ownerId']);
 
-        // Si un propriétaire est explicitement fourni (admin créant pour un owner),
-        // envoyer ownerId dans le body — NestJS l'accepte quand l'appelant est admin
-        if (!empty($proprietaireId)) {
-            $dataForApi['ownerId'] = (string) $proprietaireId;
-        } else {
-            // Aucun propriétaire fourni : NestJS utilisera le JWT bearer
-            unset($dataForApi['ownerId']);
-        }
-
+        // Cast des types numériques
         $dataForApi['year']  = (int) ($dataForApi['year']  ?? date('Y'));
         $dataForApi['seats'] = (int) ($dataForApi['seats'] ?? 5);
 
-        Log::info('Payload final création véhicule envoyé à NestJS', [
-            'has_ownerId'   => isset($dataForApi['ownerId']),
-            'ownerId'       => $dataForApi['ownerId'] ?? null,
-            'proprietaireId_source' => $proprietaireId,
-        ]);
+        // Injecter ownerId en dernier pour garantir qu'il ne soit pas écrasé
+        if (!empty($ownerId)) {
+            $dataForApi['ownerId'] = (string) $ownerId;
+        }
 
         return $this->post('vehicles', $dataForApi);
     }

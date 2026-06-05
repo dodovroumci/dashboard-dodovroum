@@ -571,9 +571,6 @@ const submit = (event?: Event) => {
   
   const routeUrl = route('admin.vehicles.store');
 
-  console.log('Formulaire prêt à être envoyé :', form.data());
-  console.log('ownerId sélectionné :', form.ownerId);
-
   form.transform((data) => ({
     ...data,
     ownerId: form.ownerId,
