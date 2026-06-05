@@ -110,8 +110,8 @@ class VehicleService extends BaseApiService
      */
     public function create(array $data, bool $isAdmin = false): array
     {
-        // Récupérer le proprietaireId AVANT le mapping (toApi() ne le transmet pas)
-        $proprietaireId = $data['proprietaireId'] ?? null;
+        // Accepter proprietaireId ou ownerId (le frontend peut envoyer l'un ou l'autre)
+        $proprietaireId = $data['proprietaireId'] ?? $data['ownerId'] ?? null;
 
         $dataForApi = VehicleMapper::toApi($data);
 

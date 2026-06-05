@@ -114,7 +114,8 @@ class StoreVehicleRequest extends FormRequest
             'images.*' => 'nullable|string|url',
             'features' => 'nullable|array',
             'features.*' => 'nullable|string|max:255',
-            'proprietaireId' => 'required|string',
+            'proprietaireId' => 'nullable|string',
+            'ownerId'        => 'nullable|string',
         ];
     }
 

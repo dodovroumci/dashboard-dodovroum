@@ -574,6 +574,7 @@ const submit = (event?: Event) => {
   form.transform((data) => ({
     ...data,
     proprietaireId: form.proprietaireId,
+    ownerId: form.proprietaireId,
   })).post(routeUrl, {
     onBefore: () => {
       // Validation finale avant l'envoi pour éviter les requêtes inutiles

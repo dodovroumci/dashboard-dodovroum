@@ -637,8 +637,8 @@ class AdminVehicleController extends Controller
                 'proprietaireId' => $validated['proprietaireId'] ?? 'NOT_SET',
             ]);
             
-            // 🛡️ BLINDAGE : Vérifier que proprietaireId est valide avant d'appeler le service
-            $proprietaireId = $validated['proprietaireId'] ?? null;
+            // 🛡️ BLINDAGE : Vérifier que proprietaireId/ownerId est valide avant d'appeler le service
+            $proprietaireId = $validated['proprietaireId'] ?? $validated['ownerId'] ?? null;
             if (empty($proprietaireId) || $proprietaireId === "1" || $proprietaireId === 1) {
                 $errorMessage = "Erreur : Aucun propriétaire valide sélectionné. Veuillez sélectionner un propriétaire dans le formulaire.";
                 Log::error('Blindage AdminVehicleController::store - proprietaireId invalide', [
