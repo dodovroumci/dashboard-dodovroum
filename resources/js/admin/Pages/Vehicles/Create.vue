@@ -571,12 +571,10 @@ const submit = (event?: Event) => {
   
   const routeUrl = route('admin.vehicles.store');
 
-  // --- DEBUG FRONTEND ---
-  console.log('--- DEBUG FRONTEND ---');
-  console.log('Données envoyées par Inertia:', form.data());
-  console.log('proprietaireId sélectionné:', form.proprietaireId);
-
-  form.post(routeUrl, {
+  form.transform((data) => ({
+    ...data,
+    proprietaireId: form.proprietaireId,
+  })).post(routeUrl, {
     onBefore: () => {
       // Validation finale avant l'envoi pour éviter les requêtes inutiles
       if (!form.proprietaireId) {
