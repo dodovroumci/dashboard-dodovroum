@@ -6,7 +6,7 @@
     <div class="flex items-center justify-between gap-2">
       <div class="min-w-0 flex-1">
         <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 truncate">{{ title }}</p>
-        <p class="text-xl sm:text-2xl font-bold text-slate-900 mt-1.5 truncate tracking-tight">{{ value }}</p>
+        <p class="text-xl sm:text-2xl font-bold text-slate-900 mt-1.5 leading-tight break-words tracking-tight" :title="String(value)">{{ value }}</p>
         <p class="text-xs font-medium text-emerald-600 mt-1.5" v-if="trend">{{ trend }}</p>
       </div>
       <div class="w-11 h-11 rounded-xl bg-brand/10 text-brand flex items-center justify-center flex-shrink-0

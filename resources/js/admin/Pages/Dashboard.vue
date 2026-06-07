@@ -22,7 +22,7 @@
           <Clock class="w-5 h-5" />
         </template>
       </StatsCard>
-      <StatsCard title="Revenus du mois" :value="`${formatPrice(stats.revenue.month)} CFA`">
+      <StatsCard title="Revenus du mois" :value="formatRevenue(stats.revenue.month)">
         <template #icon>
           <DollarSign class="w-5 h-5" />
         </template>
@@ -393,7 +393,16 @@ const formatNumber = (value: number | string): string => {
 
 const formatPrice = (value: number | string): string => {
   const num = typeof value === 'string' ? parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : value;
-  return new Intl.NumberFormat('fr-FR').format(num);
+  return new Intl.NumberFormat('fr-FR').format(Math.round(num));
+};
+
+const formatRevenue = (value: number | string): string => {
+  const num = typeof value === 'string' ? parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0 : value;
+  const n = Math.round(num);
+  if (n >= 1_000_000_000) return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000_000_000)} G CFA`;
+  if (n >= 1_000_000)     return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000_000)} M CFA`;
+  if (n >= 10_000)        return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000)} k CFA`;
+  return `${new Intl.NumberFormat('fr-FR').format(n)} CFA`;
 };
 
 const formatStatus = (status: string): string => {
