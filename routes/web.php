@@ -131,18 +131,3 @@ Route::middleware(['auth', 'owner'])
         Route::post('/combo-offers/{id}/blocked-dates', [\App\Http\Controllers\Owner\OwnerComboOfferController::class, 'blockDate'])->name('combo-offers.block-date');
         Route::delete('/combo-offers/{id}/blocked-dates', [\App\Http\Controllers\Owner\OwnerComboOfferController::class, 'unblockDate'])->name('combo-offers.unblock-date');
     });
-
-if (app()->environment('local')) {
-    // Route de test pour vérifier l'API
-    Route::get('/dev/test-api', function () {
-        $apiService = app(\App\Services\DodoVroumApiService::class);
-        
-        $result = [
-            'test_residences' => $apiService->getResidences(),
-            'test_vehicles' => $apiService->getVehicles(),
-            'test_stats' => $apiService->getDashboardStats(),
-        ];
-        
-        return response()->json($result, 200, [], JSON_PRETTY_PRINT);
-    })->middleware('auth');
-}

@@ -41,12 +41,15 @@
         <p class="text-sm text-slate-500 mb-1">Réservations confirmées</p>
         <p class="text-2xl font-semibold text-slate-900">{{ formatNumber(stats?.confirmedBookings || 0) }}</p>
       </div>
-      <div class="bg-white border border-slate-200 rounded-xl p-6">
+      <div class="bg-white border border-slate-200 rounded-xl p-6 min-w-0">
         <div class="flex items-center justify-between mb-2">
           <DollarSign class="w-5 h-5 text-emerald-500" />
         </div>
         <p class="text-sm text-slate-500 mb-1">Revenus du mois</p>
-        <p class="text-2xl font-semibold text-emerald-600">{{ formatPrice(stats?.monthRevenue || 0) }} CFA</p>
+        <p class="text-xl font-semibold text-emerald-600 leading-tight break-words"
+           :title="`${formatPrice(stats?.monthRevenue || 0)} CFA`">
+          {{ formatRevenue(stats?.monthRevenue || 0) }}
+        </p>
       </div>
       <div class="bg-white border border-slate-200 rounded-xl p-6">
         <div class="flex items-center justify-between mb-2">
@@ -414,8 +417,15 @@ const resetFilters = () => {
   applyFilters();
 };
 
-const formatPrice = (price: number): string => {
-  return new Intl.NumberFormat('fr-FR').format(price);
+const formatPrice = (price: number): string =>
+  new Intl.NumberFormat('fr-FR').format(Math.round(price));
+
+const formatRevenue = (amount: number): string => {
+  const n = Math.round(amount);
+  if (n >= 1_000_000_000) return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000_000_000)} G CFA`;
+  if (n >= 1_000_000)     return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000_000)} M CFA`;
+  if (n >= 10_000)        return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(n / 1_000)} k CFA`;
+  return `${new Intl.NumberFormat('fr-FR').format(n)} CFA`;
 };
 
 // ── Statut depuis le backend (pas de calcul de date côté frontend) ───────────
